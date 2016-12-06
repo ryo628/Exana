@@ -1,10 +1,12 @@
 # Exana
 
 ------------------------------------------------------------------------------
+
 Exana: EXecution-driven Application aNAlysis tool
 
 Copyright (C)   2014-2016,   Yukinori Sato
 All Rights Reserved. 
+
 ------------------------------------------------------------------------------
 
 
