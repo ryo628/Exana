@@ -53,3 +53,19 @@ This software package contains code written by third parties.  Such
 software will have its own individual LICENSE file in the directory in
 which it appears.  This file will describe the copyrights, license,
 and restrictions which apply to that code.
+
+The disclaimer of warranty in the University of Illinois Open Source
+License applies to all code in this Exana Distribution, and nothing in
+any of the other licenses gives permission to use the names of the JST
+CREST, Tokyo Institute of Technology nor its contributors to endorse
+or promote products derived from this Software.
+
+The following pieces of software have additional or alternate
+copyrights, licenses, and/or restrictions:
+
+Program             Directory
+-------             ---------
+makefile            .
+makefile.rule       .
+
+These files are originally from pintool's source/tools directory.
