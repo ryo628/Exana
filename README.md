@@ -15,6 +15,7 @@ Currently, Exana provide the following functions:
 * LCCT+M (Loop and call context tree with memory dataflow)
 * MemPat (Memory access pattern analysis)
 * Working set analysis
+* C2Sim (Advanced cache simulation with line-conflict detection)
 
 
 ## How to build
@@ -22,7 +23,7 @@ Currently, Exana provide the following functions:
 
     For information about Pin tool kit, please check:
     	http://pintool.org/ 
-    Here, Exana is verified using Pin tool kit rev 71313 for Intel64 linux on CentOS.
+    Here, Exana is verified using Pin tool kit rev 71313 for Intel64 linux on CentOS 6.  (In this version, we did not support Pin-3.x and CentOS 7.  If you would like to run on such environment, please let me know.)
 
 * Unpack the pin-2.14-71313-gcc.4.4.7-linux.tar.gz
 * cd pin-2.14-71313-gcc.4.4.7-linux.tar.gz/source/tools
