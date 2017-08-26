@@ -25,8 +25,7 @@ All Rights Reserved.
 
 //#include "csim.h"
 #include "cacheSim.h"
-
-#include "ExanaDBT.h"
+#include "sampling.h"
 
  /////////////////////////////////////////////////
 
@@ -165,7 +164,6 @@ inline UINT64 getCycleCnt(void){
   RDTSC(start_cycle);
   return start_cycle;
 }  
-
 
 
 bool profileOn=0;
@@ -753,8 +751,13 @@ void whenMultipleOutEdgeMarker(int *rtnIDval, ADDRINT instAdr, LoopMarkerElem *l
     //int flag=popLoopStack(loopID);    if(flag) g_currNode[threadid]=g_currNode[threadid]->parent;
     updateLoopTripInfo(g_currNode[threadid]);
 
+    if(workingSetAnaMode==LCCTmode){
+      ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
+      tls->countAndResetWorkingSet(g_currNode[threadid]);
+    }
+
+
     //cout<<"loopOutEdge "<<endl;
-    if(workingSetAnaMode==LCCTmode)countAndResetWorkingSet(g_currNode[threadid]);
 
     if(loopID!=g_currNode[threadid]->loopID) {
       //printNode(currProcedureNode[threadid], DPRINT);
@@ -792,6 +795,8 @@ void whenMultipleOutEdgeMarker(int *rtnIDval, ADDRINT instAdr, LoopMarkerElem *l
 	  }
       }
     }
+
+
     g_currNode[threadid]=g_currNode[threadid]->parent;
    }
   else{
@@ -809,11 +814,16 @@ void whenMultipleOutEdgeMarker(int *rtnIDval, ADDRINT instAdr, LoopMarkerElem *l
     for(;elem; elem=elem->prev){
       //DPRINT<<"pop "<<dec<<elem->loopID<<endl;
       //int flag=popLoopStack(elem->loopID);      if(flag){	g_currNode[threadid]=g_currNode[threadid]->parent;}
+
       updateLoopTripInfo(g_currNode[threadid]);
 
-      //cout<<"loopOutEdge Multiple"<<endl;
-      if(workingSetAnaMode==LCCTmode) countAndResetWorkingSet(g_currNode[threadid]);
+      if(workingSetAnaMode==LCCTmode){
+	ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
+	tls->countAndResetWorkingSet(g_currNode[threadid]);
+      }
 
+
+      //cout<<"loopOutEdge Multiple"<<endl;
 
       int loopID=elem->loopID;
       //DPRINT<<"after pop "<<dec<<elem->loopID<<endl;
@@ -853,6 +863,7 @@ void whenMultipleOutEdgeMarker(int *rtnIDval, ADDRINT instAdr, LoopMarkerElem *l
 
 	}
       }
+
       g_currNode[threadid]=g_currNode[threadid]->parent;
 
       //DPRINT<<"outEdge  "<<hex<<instAdr<<" "<<dec<<elem->loopID<<"  g_currNode[threadid]= "<<hex<<g_currNode[threadid]<<endl;    
@@ -3258,7 +3269,8 @@ VOID ImageLoad(IMG img, VOID *v)
     return;
   }
 
-    if(mlm==MallocdMode){
+    if(mlm==MallocdMode){   
+
       RTN r = RTN_FindByName(img, "malloc");
       if (RTN_Valid(r)){
 	//cout<<"rtn "<<RTN_Name(r)<<endl;
@@ -3288,7 +3300,7 @@ VOID ImageLoad(IMG img, VOID *v)
       }  
       r = RTN_FindByName(img, "mmap");
       if (RTN_Valid(r)){  
-	//cout<<"rtn "<<RTN_Name(r)<<endl;
+	//cout<<"Image: rtn "<<RTN_Name(r)<<endl;
 
 	MallocDetection(img, r);
       }  
@@ -3308,16 +3320,6 @@ VOID ImageLoad(IMG img, VOID *v)
 
       for (RTN rtn = SEC_RtnHead(sec); RTN_Valid(rtn); rtn = RTN_Next(rtn)){
 
-#if 0
-	if(profMode==STATIC_0){
-	  string targetRtnName="mm";
-	  cout<<"ExanaDBT"<<endl;
-	  if(RTN_Name(rtn)==targetRtnName){
-	    ExanaDBT(rtn);
-	  }
-	  cout<<"ExanaDBT OK"<<endl;
-	}
-#endif
 	//outFileOfProf<<"Check rtn "<<RTN_Name(rtn)<<endl;
 
 
@@ -3478,7 +3480,11 @@ VOID ImageLoad(IMG img, VOID *v)
 
 	    findLoopInAndOut();
 
-
+#if 0
+	      outFileOfProf << "Rtn: " << hex<<setw(8) << RTN_Address(rtn) << " " << rtnName << endl;  
+	      //printBbl(outFileOfProf);
+	      printLoopRegion();
+#endif
 
 #ifdef FUNC_DEBUG_MODE
 	    // for debug of particular rtn
@@ -3566,7 +3572,7 @@ VOID ImageLoad(IMG img, VOID *v)
 	  //exit(1);
 
 	  // for loop infor static.out
-	  //checkInstStatInRtn(rtn, rtnArray[rtnID]->rtnIDval);
+	  checkInstStatInRtn(rtn, rtnArray[rtnID]->rtnIDval);
 
 
 	  t03=getCycleCnt();
@@ -3727,7 +3733,10 @@ inline void whenBbl3(struct bblStatT *bblStat, THREADID threadid)
     //cout<<"current cycle = "<<t1-cycle_main_start<<endl;
     wsPageFile<<"@@@ cycle = "<<dec<<t1-cycle_main_start<<endl;
 
-    countAndResetWorkingSet(g_currNode[threadid]);
+    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
+    tls->countAndResetWorkingSet(g_currNode[threadid]);
+
+
     //cout<<dec<<wsPageFile.tellp()<<endl;
     if(wsPageFile.tellp()/2000000000>0){
       wsPageFile.close();
@@ -3786,7 +3795,10 @@ inline void whenBbl3(ADDRINT instAdr, int instCnt, int memAccessSizeR,int memAcc
     //cout<<"current cycle = "<<t1-cycle_main_start<<endl;
     wsPageFile<<"@@@ cycle = "<<dec<<t1-cycle_main_start<<endl;
 
-    countAndResetWorkingSet(g_currNode[threadid]);
+    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
+    tls->countAndResetWorkingSet(g_currNode[threadid]);
+
+
     //cout<<dec<<wsPageFile.tellp()<<endl;
     if(wsPageFile.tellp()/2000000000>0){
       wsPageFile.close();
@@ -4050,7 +4062,10 @@ VOID whenRet(int *rtnIDval, ADDRINT targetAddr, ADDRINT instAddr, THREADID threa
       while(prev){
 	if(prev== g_currNode[threadid])break;
 	//cout<<"Pop ";printNode(prev);
-	if(workingSetAnaMode==LCCTmode)countAndResetWorkingSet(prev);
+	if(workingSetAnaMode==LCCTmode){
+	  ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
+	  tls->countAndResetWorkingSet(prev);
+	}
 	prev=prev->parent;
       }
     }
@@ -4991,7 +5006,6 @@ VOID insertMarkerForTrace(TRACE trace, VOID *v)
 
   if(profMode==PLAIN)return;
 
-
   if(profMode==INTERPADD)return;
 
   UINT64 t1,t2;    
@@ -5154,14 +5168,14 @@ VOID insertMarkerForTrace(TRACE trace, VOID *v)
 	  INS_InsertCall(tailInst, IPOINT_BEFORE, AFUNPTR(whenMalloc), IARG_INST_PTR, IARG_PTR, targetAddress, IARG_END);
 	}
 
-#if 0
-	//if (*calleeRtnName=="mmap@plt"){
-	if ((*calleeRtnName).find("mmap")!=string::npos){
-	  cout<<"find "<<*calleeRtnName<<" at "<<hex<<INS_Address(tailInst)<<endl;
+	if (*calleeRtnName=="mmap@plt"){
+	//if ((*calleeRtnName).find("mmap")!=string::npos){
+	  //cout<<"find "<<*calleeRtnName<<" at "<<hex<<INS_Address(tailInst)<<endl;
 	  INS_InsertCall(tailInst, IPOINT_BEFORE, AFUNPTR(whenMalloc), IARG_INST_PTR, IARG_PTR, targetAddress, IARG_END);
 	}
+#if 1
 	if (*calleeRtnName=="realloc@plt"){
-	  cout<<"find "<<*calleeRtnName<<" at "<<hex<<INS_Address(tailInst)<<endl;
+	  //cout<<"find "<<*calleeRtnName<<" at "<<hex<<INS_Address(tailInst)<<endl;
 	  INS_InsertCall(tailInst, IPOINT_BEFORE, AFUNPTR(whenMalloc), IARG_INST_PTR, IARG_PTR, targetAddress, IARG_END);
 	}
 #endif
@@ -5238,8 +5252,80 @@ VOID insertMarkerForTrace(TRACE trace, VOID *v)
 
       //cout<<hex<<INS_Address(inst)<<" "<<INS_Disassemble(inst)<<" | "<<CATEGORY_StringShort(INS_Category(inst))<<" "<<EXTENSION_StringShort(INS_Extension(inst))<<endl;
 
+      //
+      // insert cacheSim routines
+      //
+      if (cacheSimFlag) {
+	if (!INS_IsStandardMemop(inst) && !INS_HasMemoryVector(inst))
+	  {
+	    DPRINT<<"Warning::  NonStandardMemop & NonVectorMemop  "<<INS_Disassemble(inst)<<endl;
+	    // We don't know how to treat these instructions
+	    continue;
+	  }
 
+	UINT32 memoryOperands = INS_MemoryOperandCount(inst);
+
+	for (UINT32 memOp = 0; memOp < memoryOperands; memOp++) {
+	  UINT32 refSize = INS_MemoryOperandSize(inst, memOp);
+	  enum fnRW memOpType;
+
+	  if(profMode==SAMPLING){
+	    //cout<<"samplingSimFlag@forTrace  "<<samplingSimFlag<<endl;
+	    if (INS_MemoryOperandIsRead(inst, memOp)) {
+	      memOpType=memRead;
+	      //INS_InsertIfCall(inst, IPOINT_BEFORE,(AFUNPTR)isSamplingSim, IARG_UINT32, samplingSimFlag, IARG_END);
+	      INS_InsertIfCall(inst, IPOINT_BEFORE,(AFUNPTR)isSamplingSim, IARG_END);
+	      //INS_InsertFillBufferPredicated(inst, IPOINT_BEFORE, bufId,    
+	      INS_InsertFillBufferThen(inst, IPOINT_BEFORE, bufId,
+				       IARG_INST_PTR, offsetof(struct MEMREF, pc),
+				       IARG_MEMORYOP_EA, memOp, offsetof(struct MEMREF, ea),
+				       IARG_UINT32, refSize, offsetof(struct MEMREF, size), 
+				       IARG_UINT32, memOpType, offsetof(struct MEMREF, rw), 
+				       IARG_END);
+	    }
+	    if (INS_MemoryOperandIsWritten(inst, memOp)) {
+	      memOpType=memWrite;
+	      INS_InsertIfCall(inst, IPOINT_BEFORE,(AFUNPTR)isSamplingSim, IARG_END);
+	      //INS_InsertFillBufferPredicated(inst, IPOINT_BEFORE, bufId,
+	      INS_InsertFillBufferThen(inst, IPOINT_BEFORE, bufId,
+				       IARG_INST_PTR, offsetof(struct MEMREF, pc),
+				       IARG_MEMORYOP_EA, memOp, offsetof(struct MEMREF, ea),
+				       IARG_UINT32, refSize, offsetof(struct MEMREF, size), 
+				       IARG_UINT32, memOpType, offsetof(struct MEMREF, rw), 
+				       IARG_END);
+	    }
+	  }
+	  else{
+	    if (INS_MemoryOperandIsRead(inst, memOp)) {
+	      memOpType=memRead;
+	      INS_InsertFillBuffer(inst, IPOINT_BEFORE, bufId,
+				       IARG_INST_PTR, offsetof(struct MEMREF, pc),
+				       IARG_MEMORYOP_EA, memOp, offsetof(struct MEMREF, ea),
+				       IARG_UINT32, refSize, offsetof(struct MEMREF, size), 
+				       IARG_UINT32, memOpType, offsetof(struct MEMREF, rw), 
+				       IARG_END);
+	    }
+	    if (INS_MemoryOperandIsWritten(inst, memOp)) {
+	      memOpType=memWrite;
+	      INS_InsertFillBuffer(inst, IPOINT_BEFORE, bufId,
+				       IARG_INST_PTR, offsetof(struct MEMREF, pc),
+				       IARG_MEMORYOP_EA, memOp, offsetof(struct MEMREF, ea),
+				       IARG_UINT32, refSize, offsetof(struct MEMREF, size), 
+				       IARG_UINT32, memOpType, offsetof(struct MEMREF, rw), 
+				       IARG_END);
+	    }
+	    
+	  }
+
+	}
+      }
+
+
+      
 #if 1
+      // If we use FillBuffer and DumpBuffer to access memory traces,
+      // this region must be turn off
+
       //
       // insert memAna routines
       //
@@ -5274,6 +5360,8 @@ VOID insertMarkerForTrace(TRACE trace, VOID *v)
         }
       }
 
+
+#if 1
       //
       // memOperation
       //  
@@ -5309,6 +5397,9 @@ VOID insertMarkerForTrace(TRACE trace, VOID *v)
 				     IARG_UINT32, size,IARG_UINT32, memOpType,  IARG_THREAD_ID, IARG_END);	      
         }
       }
+#endif
+
+
 #endif
 
       //
@@ -5479,139 +5570,4 @@ void CheckForHotAddress(TRACE Trace, VOID *v)
     }
 }
 #endif
-
-#if 0
-UINT64 insertions=0;
-UINT64 deletions=0;
-//void pushLoopStack(int );
-//int cmpLoopStackAndList(int , LoopList *);
-//void printLoopStack(void);
-
-ADDRINT lastDeletedCodeAdr=0;
-
-
-void whenPhase2(ADDRINT instAdr, THREADID threadid)
-{
-  //cout<<"whenPhase2 rtn "<<" adr "<<hex<<instAdr<<endl;
-  g_currNode[threadid]->loopTripInfo->tripCnt=0;
-}
-
-VOID traceInsertionCallback(TRACE trace, VOID *v)
-{
-    cout<<"traceInsertionCallback "<<hex<<TRACE_Address(trace)<<endl;
-
-    ADDRINT orig_pc = TRACE_Address(trace);
-    if (orig_pc == lastDeletedCodeAdr)
-    {
-      insertions++;
-
-      cout<<"TRACE_InsertCall   lastDeletedCodeAdr "<<hex<<lastDeletedCodeAdr<<endl;
-    
-      TRACE_InsertCall(trace, IPOINT_BEFORE, (AFUNPTR) whenPhase2, IARG_INST_PTR, IARG_THREAD_ID, IARG_END);
-      lastDeletedCodeAdr=0;
-    }
-}
-
-#define MAX_COUNT 100000
-int num_invalidateAdr=0;
-ADDRINT invalidateAdr[MAX_COUNT];
-VOID InvalidateTrace(ADDRINT instAdr, CONTEXT *ctxP)
-{
-  //g_currNode[threadid]->loopTripInfo->tripCnt=0;
-    
-    UINT32 numRemoved = CODECACHE_InvalidateTraceAtProgramAddress(instAdr);
-
-    cout << "InvalidateTrace: "  << " traces at 0x" << hex << instAdr<<"  "<< dec << numRemoved<<endl;    
-    //invalidateAdr.push_back(instAdr);
-
-    if(num_invalidateAdr<MAX_COUNT){
-      invalidateAdr[num_invalidateAdr]=instAdr;
-      cout<<"add "<<hex<< invalidateAdr[num_invalidateAdr]<<" "<<dec<<num_invalidateAdr<<endl;
-      num_invalidateAdr++;
-    }
-
-    //PIN_ExecuteAt(ctxP);
-
-}
-
-
-VOID InvalidationCallback(ADDRINT orig_pc, ADDRINT cache_pc, BOOL success)
-{
-    if (success) 
-    {
-        deletions++;
-        cout << "Callback:  SUCCESSFUL INVALIDATION #" << dec << deletions;
-        cout << "\torig pc=0x" << hex << orig_pc;
-        cout << "\tcache pc=0x" << hex << cache_pc << endl;
-	lastDeletedCodeAdr=orig_pc;
-    }
-    else
-    {
-        cout << "InvalidationCallback():   FAILED INVALIDATION";
-        cout << "\torig pc=0x" << hex << orig_pc;
-        cout << "\tcache pc=0x" << hex << cache_pc << endl;
-	cout << "[stop]"<<endl;
-	exit(1);
-    }
-}
-
-//extern PIN_LOCK lock;
-
-UINT64 phase2thr=100;
-void phase2_ana(ADDRINT instAdr, LoopMarkerElem *loopMarker, CONTEXT *ctxP)
-{
-
-#if 0
-  for(int i=0;i<num_invalidateAdr;i++){
-    if(invalidateAdr[i]==instAdr){      
-      return;
-    }
-  }
-  InvalidateTrace(instAdr, ctxP);
-#endif
-}
-
-void printWSS(void);
-//UINT64 prev_delta_wss=0;
-//UINT64 prev_wss=0;
-UINT64 wssCnt=0;
-
-void printWSS(void)
-{
-  
-  if(profMode==LCCTM){
-    //checkHashAndLWT();
-    wssCnt++;
-    if((wssCnt<4000))
-      outFileOfWSS<<dec<<wssCnt<<"\t"<<setw(14)<<n_page<<endl;
-    else if (wssCnt< (4000*4000)){
-      if((wssCnt%4000)==0)
-	outFileOfWSS<<dec<<wssCnt<<"\t"<<setw(14)<<n_page<<endl;
-    }
-    else{
-      if((wssCnt%(4000*4000))==0)
-	outFileOfWSS<<dec<<wssCnt<<"\t"<<setw(14)<<n_page<<endl;
-    }    
-
-#if 0
-    UINT64 delta_wss=n_page-prev_wss;    
-    if(prev_wss==0){
-      outFileOfWSS<<dec<<g_currNode[threadid]->loopTripInfo->tripCnt<<"\t"<<setw(14)<<n_page<<endl;
-      prev_wss=n_page;
-      prev_delta_wss=delta_wss;
-    }
-    else if(delta_wss!=prev_delta_wss){
-      outFileOfWSS<<dec<<g_currNode[threadid]->loopTripInfo->tripCnt-1<<"\t"<<setw(14)<<prev_wss<<endl;
-      outFileOfWSS<<dec<<g_currNode[threadid]->loopTripInfo->tripCnt<<"\t"<<setw(14)<<n_page<<endl;
-      prev_wss=n_page;
-      prev_delta_wss=delta_wss;
-    }
-#endif
-  }
-
-
-
-}
-#endif
-
 

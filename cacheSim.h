@@ -30,6 +30,8 @@ using namespace std;
 
 #include <sched.h>
 
+#include "memAna.h"
+
 #if 1
 // for per inst analysis
 const bool byInstAdr=1;
@@ -173,7 +175,7 @@ struct MEMREF
   ADDRINT     pc;
   ADDRINT     ea;
   UINT32      size;
-  //BOOL        read;
+  UINT32      rw;
 };
 
 struct missOriginatedListT{
@@ -199,8 +201,8 @@ struct CacheAccessInfoT {
 /*
  * Number of OS pages for the buffer
  */
-//#define NUM_BUF_PAGES 1024
-#define NUM_BUF_PAGES 1
+#define NUM_BUF_PAGES 1024
+//#define NUM_BUF_PAGES 1
 
 
 //map< uint64_t, CacheAccessInfo> addr_results;
@@ -211,7 +213,7 @@ struct CacheAccessInfoT {
 struct mallocListT{
   int mlcount;
   ADDRINT callerIp;
-  ADDRINT returnIp;
+  ADDRINT returnPtr;
   ADDRINT instAdr;
   UINT64 size;
   THREADID threadid;
@@ -261,6 +263,17 @@ class ThreadLocalData
   void updateMissOriginate(struct CacheAccessInfoT *cinfo, int cacheLevel, ADDRINT originatedPC);
   struct lastTimeWhoEvictT* findMissPCInHash(struct cacheT *c, uint64_t tag);
   void updateMissOriginPCInHash(struct cacheT *c, ADDRINT replacedPC, ADDRINT missPC);
+
+  struct upperAdrListElem **hashTable;
+  void initHashTable(void);
+  void countAndResetWorkingSet(treeNode *node);
+  UINT64 calcWorkingDataSize(enum flagMode mode);
+  void checkHashAndLWT(void);
+  struct upperAdrListElem * getCurrTableElem(ADDRINT key, ADDRINT effAddr1);
+  VOID whenMemOperation(ADDRINT instAddr, ADDRINT effAddr1, UINT32 size, enum fnRW mode, THREADID threadid);
+  void analyzeWorkingSet(ADDRINT memInstAddr, ADDRINT effAddr1, enum fnRW memOp, UINT32 size, THREADID threadid);
+  VOID whenMemoryWrite(ADDRINT instAddr, ADDRINT effAddr1, UINT32 size, THREADID threadid);
+  VOID whenMemoryRead(ADDRINT instAddr, ADDRINT effAddr1, UINT32 size, THREADID threadid);
 
 
 private:

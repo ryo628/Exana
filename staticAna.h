@@ -102,6 +102,9 @@ struct rtnArrayElem{
   PredElem **loopRegion;
   struct targetInstLoopInListElem *indirectLoopInList;
   struct targetInstLoopInListElem *retTargetLoopInList;
+  PredElem **loopIn;
+  PredElem **loopOut;
+
 };
 typedef struct rtnArrayElem RtnArrayElem;
 extern RtnArrayElem *rtnArray[MAX_RTN_CNT];
@@ -127,12 +130,19 @@ void findLoopInAndOut(void);
 void printHeadTail(void);
 void printBbl(void);
 void printBbl(ostream &);
+void printBbl(ostream &output, int rtnID);
+
+void printLoopIn(ostream &output,int i, int rtnID);
+void printLoopOut(ostream &output,int i, int rtnID);
 
 void printLoopRegion(void);
 void buildDotFileOfCFG_Bbl(void);
 void buildDotFileOfLoopNestInRtn(void);
 void printPredList(PredElem *);
 void printLoopNestInRtn(void);
+
+void buildDotFileOfCFG_Bbl(int rtnID);
+
 extern int numIrrLoop;
 
 int checkMaxLoopNestNumInRtnAtStaticAna(void);

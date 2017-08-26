@@ -407,7 +407,7 @@ VOID * paddedMmap(CONTEXT * context, AFUNPTR orgFuncptr, void* arg0, size_t arg1
    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
    struct mallocListT *p=new struct mallocListT;
    p->mlcount=mlcount;
-   p->returnIp=(UINT64)ret;
+   p->returnPtr=(UINT64)ret;
    p->instAdr=instAddr;
    p->size=arg1;
    p->threadid=threadid;
@@ -617,13 +617,6 @@ VOID * NewMalloc(CONTEXT * context, AFUNPTR orgFuncptr, size_t arg0, ADDRINT ret
 	//struct mlist *tn = (struct mlist *)malloc(sizeof(mlist));
   //cout<<"NewMalloc "<<endl;
 
-
-#if MEM_EVENT_PRINT
-   cout << "malloc(0x" 
-		<< hex << arg0 << ")  called"
-		<< endl << flush;
-#endif
-
   VOID * ret;
 
    PIN_CallApplicationFunction( context, threadid,
@@ -638,9 +631,9 @@ VOID * NewMalloc(CONTEXT * context, AFUNPTR orgFuncptr, size_t arg0, ADDRINT ret
 	//tn->sa = (unsigned long long)v;
 
 #if MEM_EVENT_PRINT
-   cout << "NewMalloc ret "<<hex<<ret <<" @"
+   cout << "NewMalloc @ "<<hex<<ret <<" to "
 		<< hex << ADDRINT ( orgFuncptr ) << " malloc(" 
-		<< hex << arg0 << ")  from " 
+		<< hex << arg0 << ")  @IP " 
 		<< hex << returnIp << "  thread="
 		<< dec << threadid
 		<< endl << flush;
@@ -654,7 +647,7 @@ VOID * NewMalloc(CONTEXT * context, AFUNPTR orgFuncptr, size_t arg0, ADDRINT ret
    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
    struct mallocListT *p=new struct mallocListT;
    p->mlcount=mlcount;
-   p->returnIp=(UINT64)ret;
+   p->returnPtr=(UINT64)ret;
    p->instAdr=instAddr;
    p->size=arg0;
    p->threadid=threadid;
@@ -680,12 +673,6 @@ VOID * NewValloc(CONTEXT * context, AFUNPTR orgFuncptr, size_t arg0, ADDRINT ret
   //cout<<"NewMalloc "<<endl;
 
 
-#if MEM_EVENT_PRINT
-   cout << "valloc(0x" 
-		<< hex << arg0 << ")  called"
-		<< endl << flush;
-#endif
-
   VOID * ret;
 
    PIN_CallApplicationFunction( context, threadid,
@@ -701,8 +688,8 @@ VOID * NewValloc(CONTEXT * context, AFUNPTR orgFuncptr, size_t arg0, ADDRINT ret
 
 #if MEM_EVENT_PRINT
    cout << "NewValloc ret "<<hex<<ret <<" @"
-		<< hex << ADDRINT ( orgFuncptr ) << " malloc(" 
-		<< hex << arg0 << ")  from " 
+		<< hex << ADDRINT ( orgFuncptr ) << " valloc(" 
+		<< hex << arg0 << ")  @IP " 
 		<< hex << returnIp << "  thread="
 		<< dec << threadid
 		<< endl << flush;
@@ -716,7 +703,7 @@ VOID * NewValloc(CONTEXT * context, AFUNPTR orgFuncptr, size_t arg0, ADDRINT ret
    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
    struct mallocListT *p=new struct mallocListT;
    p->mlcount=mlcount;
-   p->returnIp=(UINT64)ret;
+   p->returnPtr=(UINT64)ret;
    p->instAdr=instAddr;
    p->size=arg0;
    p->threadid=threadid;
@@ -774,7 +761,7 @@ VOID * NewCalloc(CONTEXT * context, AFUNPTR orgFuncptr, size_t arg0, size_t arg1
    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
    struct mallocListT *p=new struct mallocListT;
    p->mlcount=mlcount;
-   p->returnIp=(UINT64)ret;
+   p->returnPtr=(UINT64)ret;
    p->instAdr=instAddr;
    p->size=arg0*arg1;
    p->threadid=threadid;
@@ -818,7 +805,7 @@ VOID * NewRealloc(CONTEXT * context, AFUNPTR orgFuncptr, void* arg0, size_t arg1
   cout << "NewRalloc ret = "
 		<< hex << ret << "  realloc( " 
 		<< hex << arg0 << ", " 
-		<< dec << arg1 << ")   from " 
+		<< dec << arg1 << ")   @PC " 
 		<< hex << returnIp <<" thread="
 		<< dec << threadid
 		<< endl << flush;
@@ -832,7 +819,7 @@ VOID * NewRealloc(CONTEXT * context, AFUNPTR orgFuncptr, void* arg0, size_t arg1
    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
    struct mallocListT *p=new struct mallocListT;
    p->mlcount=mlcount;
-   p->returnIp=(UINT64)ret;
+   p->returnPtr=(UINT64)ret;
    p->instAdr=instAddr;
    p->size=arg1;
    p->threadid=threadid;
@@ -884,7 +871,7 @@ VOID * NewMmap(CONTEXT * context, AFUNPTR orgFuncptr, void* arg0, size_t arg1, i
        << dec << arg2 <<", "
        << dec << arg3 <<", "
        << dec << arg4 <<", "
-       << dec << arg5 << ")   from " 
+       << dec << arg5 << ")   @PC " 
 		<< hex << returnIp <<"  thread="
 		<< dec << threadid
 		<< endl << flush;
@@ -898,7 +885,7 @@ VOID * NewMmap(CONTEXT * context, AFUNPTR orgFuncptr, void* arg0, size_t arg1, i
    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
    struct mallocListT *p=new struct mallocListT;
    p->mlcount=mlcount;
-   p->returnIp=(UINT64)ret;
+   p->returnPtr=(UINT64)ret;
    p->instAdr=instAddr;
    p->size=arg1;
    p->threadid=threadid;
@@ -952,7 +939,7 @@ int New_posix_memalign(CONTEXT * context, AFUNPTR orgFuncptr, void** arg0, size_
    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
    struct mallocListT *p=new struct mallocListT;
    p->mlcount=mlcount;
-   p->returnIp=(UINT64)*arg0;
+   p->returnPtr=(UINT64)*arg0;
    p->instAdr=instAddr;
    p->size=arg2;
    p->threadid=threadid;
@@ -1051,29 +1038,7 @@ VOID MallocDetection(IMG img, RTN rtn){
 
       //}
     }
-
-
-#if 0
-    if (RTN_Name(rtn)=="realloc" || RTN_Name(rtn)=="__libc_realloc"){
-      //if(IMG_Name(img)=="/lib64/ld-linux-x86-64.so.2"){
-	//if(IMG_Name(img)=="/lib64/libc.so.6"){
-	//outFileOfProf<<"MallocDetection replaced at  " << IMG_Name(img) <<" "<<hex<<RTN_Address(rtn)<<endl;
-      //cout<<"MallocDetection replaced at  " << IMG_Name(img) <<" "<<hex<<RTN_Address(rtn)<<endl;
-      //MallocOutFile << "malloc in " << IMG_Name(img) <<" "<<hex<<RTN_Address(rtn)<< " is replaced"<<endl;
-      PROTO proto_realloc = PROTO_Allocate(PIN_PARG(void *), CALLINGSTD_DEFAULT,
-                                         "realloc", PIN_PARG(size_t), PIN_PARG(size_t), PIN_PARG_END());
-      
-      RTN_ReplaceSignature(rtn, AFUNPTR(NewRealloc),
-			   IARG_PROTOTYPE, proto_realloc,
-			   IARG_CONTEXT,
-			   IARG_ORIG_FUNCPTR,
-			   IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-			   IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-			   IARG_RETURN_IP,IARG_INST_PTR, IARG_THREAD_ID, IARG_END);
-      PROTO_Free( proto_realloc );
-      //}
-    }
-    if (RTN_Name(rtn)=="__mmap" || RTN_Name(rtn)=="mmap64"){
+    if (RTN_Name(rtn)=="__mmap" || RTN_Name(rtn)=="mmap64" || RTN_Name(rtn)=="mmap"){
       //if(IMG_Name(img)=="/lib64/ld-linux-x86-64.so.2"){
 	//if(IMG_Name(img)=="/lib64/libc.so.6"){
 	//outFileOfProf<<"MallocDetection replaced at  " << IMG_Name(img) <<" "<<hex<<RTN_Address(rtn)<<endl;
@@ -1096,6 +1061,28 @@ VOID MallocDetection(IMG img, RTN rtn){
 			   IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
 			   IARG_RETURN_IP,IARG_INST_PTR, IARG_THREAD_ID, IARG_END);
       PROTO_Free( proto_mmap);
+      //}
+    }
+
+
+#if 0
+    if (RTN_Name(rtn)=="realloc" || RTN_Name(rtn)=="__libc_realloc"){
+      //if(IMG_Name(img)=="/lib64/ld-linux-x86-64.so.2"){
+	//if(IMG_Name(img)=="/lib64/libc.so.6"){
+	//outFileOfProf<<"MallocDetection replaced at  " << IMG_Name(img) <<" "<<hex<<RTN_Address(rtn)<<endl;
+      //cout<<"MallocDetection replaced at  " << IMG_Name(img) <<" "<<hex<<RTN_Address(rtn)<<endl;
+      //MallocOutFile << "malloc in " << IMG_Name(img) <<" "<<hex<<RTN_Address(rtn)<< " is replaced"<<endl;
+      PROTO proto_realloc = PROTO_Allocate(PIN_PARG(void *), CALLINGSTD_DEFAULT,
+                                         "realloc", PIN_PARG(size_t), PIN_PARG(size_t), PIN_PARG_END());
+      
+      RTN_ReplaceSignature(rtn, AFUNPTR(NewRealloc),
+			   IARG_PROTOTYPE, proto_realloc,
+			   IARG_CONTEXT,
+			   IARG_ORIG_FUNCPTR,
+			   IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+			   IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+			   IARG_RETURN_IP,IARG_INST_PTR, IARG_THREAD_ID, IARG_END);
+      PROTO_Free( proto_realloc );
       //}
     }
     // outFileOfProf<<"MallocDetection OK"<<endl;
@@ -1164,7 +1151,10 @@ struct wsCntElem *ExanaAPI_getWS(FP_MALLOC orgFuncptr, size_t arg0, ADDRINT retu
   struct treeNode *curr=g_currNode[threadid];
   while(curr){
     //printNode(curr);
-    countAndResetWorkingSet(curr);
+    //countAndResetWorkingSet(curr);
+
+     ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
+     tls->countAndResetWorkingSet(curr);
 
     a.RW=curr->workingSetInfo->sumRW;
     a.R=curr->workingSetInfo->sumR;
@@ -1257,7 +1247,7 @@ VOID MallocFini()
 	MallocOutFile << "Calling malloc@plt at " << hex<<t.callerIp<<" ("<<*(t.gfileName)<<":"<<dec<<t.line<<") to "<<hex<<t.instAdr<<endl;
       }
       else{
-	MallocOutFile << "Return from malloc ("<<dec<<t.mlcount<<") [" << hex << t.returnIp <<", "<<hex<<(UINT64) t.returnIp + (UINT64) t.size<< "] Size: " << hex<<t.size <<" | thread="<<dec<<t.threadid<<endl;
+	MallocOutFile << "Return from malloc ("<<dec<<t.mlcount<<") [" << hex << t.returnPtr <<", "<<hex<<(UINT64) t.returnPtr + (UINT64) t.size<< "] Size: " << hex<<t.size <<" | thread="<<dec<<t.threadid<<endl;
       }
     }
   }

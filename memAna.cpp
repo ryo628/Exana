@@ -22,39 +22,16 @@ All Rights Reserved.
 #include "loopContextProf.h"
 #include "main.h"
 
+#include "cacheSim.h"
+
 #define TP_THR 500
 
 
-struct lastWriteTableElem{
-  //ADDRINT memAddr; 
-  struct treeNode *lastNode;
-  ADDRINT instAddr; 
-  UINT64 n_appearance;
-  UINT64 tripCnt;
-  bool rFlag;
-  bool wFlag;
-};
-
-//extern struct treeNode *g_currNode;
-
-//#define N_HASH_TABLE 0x10000
-
-#define MAX_DEP 32
-
-
-
-struct upperAdrListElem{
-  ADDRINT upperAddr;
-  lastWriteTableElem *lastWriteTable;
-  struct upperAdrListElem *next;
-  UINT64 useBits;
-  //char useBits[MAX_DEP];
-};
 
 //char *useBitTable[MAX_DEP];
 
 //struct upperAdrListElem *hashTable[N_HASH_TABLE];
-struct upperAdrListElem **hashTable;
+//struct upperAdrListElem **hashTable;
 
 //enum fnRW {memRead, memWrite};
 
@@ -83,17 +60,10 @@ UINT64 calcDepMask(treeNode *node)
 #endif
 
 
-void initHashTable(void)
+void ThreadLocalData::initHashTable(void)
 {
   hashTable=(struct upperAdrListElem **) new struct upperAdrListElem *[N_HASH_TABLE];
   memset(hashTable,0, sizeof(struct upperAdrListElem *) * N_HASH_TABLE);
-
-#if 0
-  for(int dep=0;dep<MAX_DEP;dep++){
-    useBitTable[dep]=new char [N_HASH_TABLE];
-    memset(useBitTable[dep],0,(sizeof(char)* N_HASH_TABLE));
-  }
-#endif
 
 }
 
@@ -105,7 +75,6 @@ void updateWorkingSetInfo(struct upperAdrListElem * curr, treeNode *node, enum f
   UINT64 mask=0;
 
   //char prev=useBitTable[depth][key];
-
 
   if(mode==r){
    if(depth<32){
@@ -124,34 +93,14 @@ void updateWorkingSetInfo(struct upperAdrListElem * curr, treeNode *node, enum f
     ;
   }
 
-#if 0
-  if(depth<MAX_DEP){
-    int dep=depth;
-    if(mode==r){
-      while(dep>=0){
-	useBitTable[dep][key]|=rmask;
-	dep--;
-      }
-    }
-    else if (mode==w){
-      while(dep>=0){
-	useBitTable[dep][key]|=wmask;
-	dep--;
-      }
-    }
-  }
-
-  if(useBitTable[depth][key]==prev){
-    if(mode==r)     cout<<"R ";
-    else if(mode==w)      cout<<"W ";
-    cout<<"updateUseBits  "<<hex<<(int) useBitTable[depth][key]<<"  at dep:key "<<depth<<":"<<key<<endl;
-  }
-#endif
+  //printNode2(node);
+  //cout<<"  update  upperAddr = "<<hex<<curr->upperAddr<<"   useBits ="<<curr->useBits<<endl;
+    
 
 }
 extern bool FiniFlag;
 // count the number of pages of each region
-void countAndResetWorkingSet(treeNode *node)
+void ThreadLocalData::countAndResetWorkingSet(treeNode *node)
 {
 
   if(profileOn==0 && FiniFlag==0) return;
@@ -179,7 +128,7 @@ void countAndResetWorkingSet(treeNode *node)
 
     rwmask=rmask | wmask;
 
-    //cout<<"depth "<< dec<<depth<< " end.  Count  "<<hex<<rmask<<" "<<wmask<<endl;
+    //cout<<"depth "<< dec<<depth<< " end.   mask[r,w]=  "<<hex<<rmask<<" "<<wmask<<endl;
 
     for(UINT64 i=0;i<N_HASH_TABLE;i++){
       struct upperAdrListElem *ptr=hashTable[i];
@@ -191,7 +140,7 @@ void countAndResetWorkingSet(treeNode *node)
 	    wsPageFile<<hex<<ptr->upperAddr<<endl;
 	}
 	if((ptr->useBits & wmask)){
-	  //cout<<" detect R ";
+	  //cout<<" detect W ";
 	  wCnt++;
 	  if(workingSetAnaMode==Wmode)
 	    wsPageFile<<hex<<ptr->upperAddr<<endl;
@@ -262,7 +211,7 @@ void countAndResetWorkingSet(treeNode *node)
 }
 
 // count the size of activated pages of each region
-UINT64 calcWorkingDataSize(enum flagMode mode)
+UINT64 ThreadLocalData::calcWorkingDataSize(enum flagMode mode)
 {
   UINT64 rCnt, wCnt, rwCnt, touchCnt;
   UINT64 nPage, nList;
@@ -300,7 +249,7 @@ UINT64 calcWorkingDataSize(enum flagMode mode)
 
 }
 
-void checkHashAndLWT(void)
+void ThreadLocalData::checkHashAndLWT(void)
 {
   //UINT64 rCnt, wCnt, rwCnt, touchCnt;
   UINT64 nEntry, nList, maxListNum=0,n=0;
@@ -326,9 +275,10 @@ void checkHashAndLWT(void)
 
 }
 
-struct upperAdrListElem * getCurrTableElem(ADDRINT key, ADDRINT effAddr1);
+//struct upperAdrListElem * getCurrTableElem(ADDRINT key, ADDRINT effAddr1);
+//struct ThreadLocalData::upperAdrListElem * getCurrTableElem(ADDRINT key, ADDRINT effAddr1);
 
-void analyzeWorkingSet(ADDRINT memInstAddr, ADDRINT effAddr1, enum fnRW memOp, UINT32 size, THREADID threadid)
+void ThreadLocalData::analyzeWorkingSet(ADDRINT memInstAddr, ADDRINT effAddr1, enum fnRW memOp, UINT32 size, THREADID threadid)
 {
 
   //struct lastWriteTableElem *curr_lastWriteTable;
@@ -629,11 +579,11 @@ struct depInstListElem *addDepInst(struct treeNode *currNode, ADDRINT memInstAdr
   return newElem;
 }
 
-UINT64 n_page=0;
+//UINT64 n_page=0;
 
 struct upperAdrListElem *prevElem=NULL;
 
-struct upperAdrListElem * getCurrTableElem(ADDRINT key, ADDRINT effAddr1)
+struct upperAdrListElem * ThreadLocalData::getCurrTableElem(ADDRINT key, ADDRINT effAddr1)
 {
   struct lastWriteTableElem *curr_lastWriteTable;
 
@@ -665,7 +615,7 @@ struct upperAdrListElem * getCurrTableElem(ADDRINT key, ADDRINT effAddr1)
   hashTable[key]=newPtr;
   curr_lastWriteTable=newPtr->lastWriteTable;
   
-  n_page++;
+  //n_page++;
   //cout<<dec<<n_page<<"  add page for "<<hex<<newPtr->upperAddr<<endl;
   
   //cout<<dec<<++hashCnt<<"  hashTable new "<<sizeof(lastWriteTableElem [N_ACCESS_TABLE])<<"   writeAdr = "<<hex<<effAddr1 <<"   key="<<dec<<key<<endl;
@@ -739,7 +689,66 @@ inline UINT64 getCycleCnt(void){
 
 extern string g_pwd;
 static UINT64 traceCnt=1;
+
 VOID whenMemOperation(ADDRINT instAddr, ADDRINT effAddr1, UINT32 size,enum fnRW mode, THREADID threadid)
+{
+
+  if(profileOn==0) return;
+  //if(profileOn==0||profile_mem_On==0 || profile_itr_On==0) return; 
+#if 0
+  if(workingSetAnaFlag && g_currNode[threadid]->stat->n_appearance > TP_THR){
+    //cout<<"TP_THR ";printNode(g_currNode[threadid]);
+    return;
+  }
+#endif
+
+  //DPRINT<<"whenMemoryWrite"<<endl;
+
+
+  if(!allThreadsFlag && threadid!=0)  return;
+
+  //int tid=PIN_GetTid();
+  ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid ) );
+
+  tls->whenMemOperation(instAddr, effAddr1, size,mode, threadid);
+
+  
+}
+
+
+VOID whenMemoryWrite(ADDRINT memInstAddr, ADDRINT effAddr1, UINT32 size, THREADID threadid)
+{
+
+  if(profileOn==0) return;
+  //if(profileOn==0||profile_mem_On==0 || profile_itr_On==0) return; 
+
+  //DPRINT<<"whenMemoryWrite"<<endl;
+
+
+  if(!allThreadsFlag && threadid!=0)  return;
+
+  ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid ) );
+
+  tls->whenMemoryWrite(memInstAddr, effAddr1, size, threadid);
+
+}
+
+VOID whenMemoryRead(ADDRINT memInstAddr, ADDRINT effAddr1, UINT32 size, THREADID threadid)
+{
+
+  if(profileOn==0)  return;
+  //if(profileOn==0||profile_mem_On==0) return; 
+
+  //DPRINT<<"whenMemoryRead"<<endl;
+  if(!allThreadsFlag && threadid!=0)  return;
+
+  ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid ) );
+
+  tls->whenMemoryRead(memInstAddr, effAddr1, size, threadid);
+
+}
+
+VOID ThreadLocalData::whenMemOperation(ADDRINT instAddr, ADDRINT effAddr1, UINT32 size,enum fnRW mode, THREADID threadid)
 {
 
   if(profileOn==0) return;
@@ -816,7 +825,7 @@ VOID whenMemOperation(ADDRINT instAddr, ADDRINT effAddr1, UINT32 size,enum fnRW 
 }
 
 
-VOID whenMemoryWrite(ADDRINT memInstAddr, ADDRINT effAddr1, UINT32 size, THREADID threadid)
+VOID ThreadLocalData::whenMemoryWrite(ADDRINT memInstAddr, ADDRINT effAddr1, UINT32 size, THREADID threadid)
 {
 
   if(profileOn==0) return;
@@ -917,7 +926,7 @@ VOID whenMemoryWrite(ADDRINT memInstAddr, ADDRINT effAddr1, UINT32 size, THREADI
   last_cycleCnt=t2;
 }
 
-VOID whenMemoryRead(ADDRINT memInstAddr, ADDRINT effAddr1, UINT32 size, THREADID threadid)
+VOID ThreadLocalData::whenMemoryRead(ADDRINT memInstAddr, ADDRINT effAddr1, UINT32 size, THREADID threadid)
 {
 
   if(profileOn==0)  return;

@@ -43,64 +43,8 @@ INT32 Usage()
 //bool DTUNE=0;
 //string depOutFileName;
 
-extern UINT64 start_cycle_sim;
-extern UINT64 prev_cycle_sim_end;
-extern UINT64 t_period_sim;
-extern UINT64 t_warmup;
-extern UINT64 t_evaluation;
-extern bool samplingSimFlag;
-extern bool evaluationFlag;
-UINT64 n_memref=0;
-UINT64 prev_memref=0;
 
-
-vector <THREADID > tid_list;
-ThreadLocalData::ThreadLocalData(THREADID tid)
-{
-  // constructor
-  
-  //cout<<"csim_init()@ThreadLocalData "<<dec<<tid<<endl;
-
-
-  tid_list.push_back(tid);
-
-
-
-  flushFlag=0;
-
-  //struct mallocListT *t=new struct mallocListT;
-  //memset(t, 0, sizeof(mallocListT));
-  //mallocList.push_back(t);
-
-}
-
-
-ThreadLocalData::~ThreadLocalData()
-{
-  // deconstructor
-
-  //_ofile.close();
-}
-
-
-//__attribute__((always_inline))
-//static __inline__ 
-void ThreadLocalData::DumpBuffer( struct MEMREF * reference, UINT64 numElements, THREADID tid )
-{
-
-  //if(g_currNode.size()>0 && g_currNode[tid])  g_currNode[tid]->stat->cycleCnt+=t2;
-
-  for(UINT64 i=0; i<numElements; i++, reference++)
-    {
-      ;
-    }
-
-  //cout<<"DumpBuffer OK"<<tid<<endl;
-  //cout.flush();
-}
-
-
-
+extern VOID * BufferFull(BUFFER_ID id, THREADID tid, const CONTEXT *ctxt, VOID *buf, UINT64 numElements, VOID *v);
 
 int  main(int argc, char *argv[])
 {
@@ -118,9 +62,26 @@ int  main(int argc, char *argv[])
 
     PIN_InitSymbols();
     getOptions(argc,argv);
+    
+    bufId = PIN_DefineTraceBuffer(sizeof(struct MEMREF), NUM_BUF_PAGES,
+                                  BufferFull, 0);
+
+    if(bufId == BUFFER_ID_INVALID){
+      cerr << "Error: could not allocate initial buffer" << endl;
+      return 1;
+    }
 
     tls_key = PIN_CreateThreadDataKey(0);
     
+#if 1
+    evicted_list_num[clevel1]=l1_way_num*2;
+    evicted_list_num[clevel2]=l2_way_num*2;
+    evicted_list_num[clevel3]=l3_way_num*2;
+#else
+    evicted_list_num[clevel1]=16;
+    evicted_list_num[clevel2]=16;
+    evicted_list_num[clevel3]=16;
+#endif
 
     PIN_AddThreadStartFunction(ThreadStart, 0);
     PIN_AddThreadFiniFunction(ThreadFini, 0);

@@ -852,6 +852,10 @@ void buildBbl()
   rtnArray[totalRtnCnt]->indirectLoopInList=NULL;
   rtnArray[totalRtnCnt]->retTargetLoopInList=NULL;
   rtnArray[totalRtnCnt]->loopRegion=NULL;
+  
+  rtnArray[totalRtnCnt]->loopIn=NULL;
+  rtnArray[totalRtnCnt]->loopOut=NULL;
+
 
 
   //cout<<dec<<totalRtnCnt<<" "<<*rtnArray[totalRtnCnt]->rtnName<<" (in rtnArray)@"<<rtnArray[totalRtnCnt]->rtnName<<endl;
@@ -1181,6 +1185,29 @@ void printBbl(ostream &output)
     if(bblArray[i].isTailInstCall)
       output<<"  (tail is call)";
     if(bblArray[i].isTailInstRet)
+      output<<"  (tail is ret)";
+    output<<endl;
+  }
+  
+}
+
+void printBbl(ostream &output, int rtnID)
+{
+
+  BblElem *bblArrayLocal=rtnArray[rtnID]->bblArray;
+
+  int bblCnt=rtnArray[rtnID]->bblCnt;
+
+  output<<"bblCnt  "<<dec<<bblCnt<<endl;
+  for(int i=0;i<bblCnt;i++){
+    output<<"      bbl  "<<dec<<bblArrayLocal[i].id<<" "<<bblArrayLocal[i].instCnt<<" "<<hex<<bblArrayLocal[i].headAdr<<" "<<bblArrayLocal[i].tailAdr<<" "<<bblArrayLocal[i].nextAdr0<<" "<<bblArrayLocal[i].nextAdr1;
+    if(bblArrayLocal[i].next0)
+      output<<"  bbl:"<<dec<<bblArrayLocal[i].next0->id;
+    if(bblArrayLocal[i].next1)
+      output<<"  bbl:"<<dec<<bblArrayLocal[i].next1->id;
+    if(bblArrayLocal[i].isTailInstCall)
+      output<<"  (tail is call)";
+    if(bblArrayLocal[i].isTailInstRet)
       output<<"  (tail is ret)";
     output<<endl;
   }
@@ -1576,6 +1603,50 @@ void buildDotFileOfCFG_Bbl(void)
 
 }
 
+#include <sys/stat.h>
+
+void buildDotFileOfCFG_Bbl(int rtnID)
+{
+  ofstream outFileOfCFG;  
+  string prefix=g_pwd+"/"+currTimePostfix+"/cfg/";
+
+  struct stat st;
+  int ret=stat(prefix.c_str(), &st);
+  if(ret==0);
+  else{
+    if(mkdir(prefix.c_str(), 0755)!=0){
+      cerr<<"Error: Cannot make directory "<<prefix<<endl;
+      exit(1);
+    }
+  }
+
+  string filename= prefix+(*(rtnArray[rtnID]->rtnName)).c_str()+".dot";
+
+  //cout<<filename<<endl;
+
+  outFileOfCFG.open(filename.c_str());
+
+  outFileOfCFG << "digraph G { "<< endl;
+  outFileOfCFG << "label=\""<<*(rtnArray[rtnID]->rtnName)<<"\""<<endl;
+
+
+  //cout<<"bblCnt  "<<dec<<bblCntInRtn<<endl;
+  for(int i=0;i<rtnArray[rtnID]->bblCnt;i++){
+
+    outFileOfCFG << "\t N"<<dec<<rtnArray[rtnID]->bblArray[i].id<<" [label=\""<<dec<<rtnArray[rtnID]->bblArray[i].id<<" \"];"<<endl;
+    
+    if(rtnArray[rtnID]->bblArray[i].next0)
+      outFileOfCFG << "\t N"<<dec<<rtnArray[rtnID]->bblArray[i].id<<" -> N"<<rtnArray[rtnID]->bblArray[i].next0->id<<" ;"<<endl;
+    if(rtnArray[rtnID]->bblArray[i].next1)
+      outFileOfCFG << "\t N"<<dec<<rtnArray[rtnID]->bblArray[i].id<<" -> N"<<rtnArray[rtnID]->bblArray[i].next1 ->id<<" ;"<<endl;
+  }
+  outFileOfCFG<<"\t }"<<endl;
+
+  outFileOfCFG.close();
+
+}
+
+
 #if 0
 void printLoopNestInit(string outFileOfLoopNestInRtnName)
 {
@@ -1947,21 +2018,6 @@ void findLoopOut(int i)
   
 }
 
-void printLoopIn(int i)
-{
-  if(loopInPreds[i]){
-    outFileOfProf<<"            LoopIn from ";
-    printPredList(loopInPreds[i]);
-  } 
-}
-void printLoopOut(int i)
-{
-  if(loopOutPreds[i]){
-    outFileOfProf<<"            LoopOut from ";
-    printPredList(loopOutPreds[i]);
-  } 
-}
-
 void printBblType(int i)
 {
   cout<<"      +++  bbl  "<<dec<<i<<" ";
@@ -2225,6 +2281,51 @@ void dumpLoopNestRegion(RTN rtn, int t)
 
 #endif
 
+
+
+void printLoopIn(int i)
+{
+  if(loopInPreds[i]){
+    outFileOfProf<<"            LoopIn from ";
+    printPredList(loopInPreds[i]);
+  } 
+}
+void printLoopOut(int i)
+{
+  if(loopOutPreds[i]){
+    outFileOfProf<<"            LoopOut from ";
+    printPredList(loopOutPreds[i]);
+  } 
+}
+
+void printPredList(ostream &output, PredElem *worklist)
+{
+  if(worklist){
+    PredElem *tmp;
+    //cout<<"PredList  ";
+    for(tmp=worklist;tmp;tmp=tmp->next){
+      //cout<<hex<<tmp<<" "<<dec<<tmp->id<<"   ";
+      output<<dec<<tmp->id<<" ";
+    }
+    output<<endl;
+  }
+}
+
+void printLoopIn(ostream &output,int i, int rtnID)
+{
+  if(loopInPreds[i]){
+    output<<"                LoopIn from ";
+    printPredList(output, rtnArray[rtnID]->loopIn[i]);
+  } 
+}
+void printLoopOut(ostream &output, int i, int rtnID)
+{
+  if(loopOutPreds[i]){
+    output<<"                LoopOut from ";
+    printPredList(output, rtnArray[rtnID]->loopOut[i]);
+  } 
+}
+
 void printLoopRegion(void)
 {
 
@@ -2260,6 +2361,9 @@ void findLoopInAndOut(void)
     findLoopIn(i);
     findLoopOut(i);
   }
+
+  rtnArray[totalRtnCnt]->loopIn=loopInPreds;
+  rtnArray[totalRtnCnt]->loopOut=loopOutPreds;
 }
  
 int CheckNumOfLoopsInRtn(void)

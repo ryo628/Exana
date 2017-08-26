@@ -17,8 +17,9 @@ All Rights Reserved.
 #include "OrderPatMakeStr.h"
 #include "OrderPat.h"
 
-bool evaluationFlag=0;
 bool samplingSimFlag=0;
+bool evaluationFlag=0;
+
 
 UINT64 DFG_bbl_head_adr=0;
 
@@ -124,16 +125,16 @@ INT32 ExanaUsage()
 
 
 KNOB<string> KnobOption1(KNOB_MODE_WRITEONCE, "pintool",
-    "mode", "LCCT", "specify a mode option {plain, static_0, CCT, LCCT, LCCT+M,  traceConsol} (default, LCCT)");
+    "mode", "LCCT", "specify a mode option {plain, CCT, LCCT, LCCT+M, traceConsol, C2Sim} (default, LCCT)");
 KNOB<string> KnobOption2(KNOB_MODE_WRITEONCE, "pintool", "loopID", "-1", "specify a particular loopID if you focus only on it");
 KNOB<string> KnobOption3(KNOB_MODE_WRITEONCE, "pintool",
-    "allThreads", "0", "Analyze all threads. Turn on (1) or Turn off (0) (default, off)");
+    "allThreads", "1", "Analyze all threads. Turn on (1) or Turn off (0) (default, off)");
 
 KNOB<string> KnobOption4(KNOB_MODE_WRITEONCE, "pintool",
     "memtrace", "0", "specify memory trace output 0:turn off 1:output memory trace 2:output memory trace with its function name or loopID");
 
 KNOB<string> KnobOption5(KNOB_MODE_WRITEONCE, "pintool",
-    "pageSize", "64KB", "specify a page size of the working data set analysise [64B, 128B, 256B, 4KB, 64KB] (default, 64KB)");
+    "pageSize", "64B", "specify a page size of the working data set analysise [64B, 128B, 256B, 4KB, 64KB] (default, 64B)");
 
 KNOB<string> KnobOption7(KNOB_MODE_WRITEONCE, "pintool",
     "cntMode", "instCnt", "specify a count mode option {cycleCnt, instCnt} (default, instCnt)");
@@ -154,6 +155,11 @@ KNOB<string> KnobOption11(KNOB_MODE_WRITEONCE, "pintool",
 KNOB<string> KnobOption13(KNOB_MODE_WRITEONCE, "pintool",
     "idorder", "0", "Output ID and order file. 0: Turn off 1: Turn on(Output id,order file) 2:Turn on(Output order pattern) (default, off)");
 
+KNOB<string> KnobOption14(KNOB_MODE_WRITEONCE, "pintool",
+    "cacheSim", "0", "Enable online cache simulation.  0: Turn off 1: Turn on and output [cache.dat]");
+
+KNOB<string> KnobOption15(KNOB_MODE_WRITEONCE, "pintool",
+    "cacheConfig", "./cache.config", "Specify cache configration file.  [default] ./cache.config");
 
 KNOB<string> KnobOption16(KNOB_MODE_WRITEONCE, "pintool",
     "workingSetAna", "0", "Working set analysis. 0: Turn off.   1: loop level on. 2: Interval read, 3: Interval write, 4: Interval RW (default, off)");
@@ -393,23 +399,18 @@ int  getOptions(int argc, char *argv[])
       traceConsolFlag=1;
 #endif
     }
-    else if(out0=="dtune"){
-      //LCCT_M_flag=1;
-      //profMode=DTUNE;
-      profMode=DTUNE;
-      //extern void initTraceTable();
-      //initTraceTable();
-      //DTUNE=1;
+    else if(out0=="C2Sim"){
+      //profMode=LCCTM;
+      //mpm=binMemPatMode;
+      //profMode=TRACEONLY;
+      profMode=SAMPLING;
+      cntMode=cycleCnt;
+      traceConsolFlag=1;
     }
     else if(out0=="plain"){
       //LCCT_M_flag=1;
       //profMode=DTUNE;
       profMode=PLAIN;
-    }
-    else if(out0=="static_0"){
-      //LCCT_M_flag=1;
-      //profMode=DTUNE;
-      profMode=STATIC_0;
     }
     else if(out0=="sampling"){
       profMode=SAMPLING;
@@ -435,8 +436,6 @@ int  getOptions(int argc, char *argv[])
     if(profMode==CCT) outFileOfProf<<"CCT";
     else if(profMode==LCCT) outFileOfProf<<"LCCT";
     else if(profMode==PLAIN) outFileOfProf<<"plain";
-    else if(profMode==STATIC_0) outFileOfProf<<"static_0";
-    else if(profMode==DTUNE) outFileOfProf<<"dtune";
     else if(profMode==LCCTM) outFileOfProf<<"LCCT+M";
     else if(profMode==SAMPLING) outFileOfProf<<"sampling";
     else if(profMode==TRACEONLY) outFileOfProf<<"trace";
@@ -573,7 +572,7 @@ int  getOptions(int argc, char *argv[])
 	entryBitWidth=8;
 	hashBitWidth=16;
       }
-      else if(out4=="4KB"){
+      else if (out4=="4KB"){
 	//for 1k ently (4KB) page : 4B unit
 	entryBitWidth=12;
 	hashBitWidth=16;
@@ -584,10 +583,8 @@ int  getOptions(int argc, char *argv[])
 	hashBitWidth=16;
       }
       else{
-	out4="4KB";
-	entryBitWidth=6;
-	hashBitWidth=16;
-	//return ExanaUsage();
+	outFileOfProf << "Error: undefined page size for workingSetAna,  "<<out4<< endl;
+	exit(1);
       }
       
       N_ACCESS_TABLE=1<<(entryBitWidth-2);
@@ -602,8 +599,8 @@ int  getOptions(int argc, char *argv[])
       outFileOfProf<<"N_ACCESS_TABLE "<<hex<<N_ACCESS_TABLE<<" N_HASH_TABLE "<<N_HASH_TABLE<<endl;
       outFileOfProf<<hex<<"hashSize  "<<(1<<hashBitWidth)<<",  Mask0 "<<hashMask0<<"  Maksk1 "<<hashMask1<<" hashTableMask "<<hashTableMask<<endl;
 
-      outFileOfProf<<"initHashTable"<<endl;
-      initHashTable();
+      //outFileOfProf<<"initHashTable"<<endl;
+      //initHashTable();
 
     }
 
@@ -647,7 +644,158 @@ int  getOptions(int argc, char *argv[])
 
 
 
+#ifndef EXANA_R1
 
+    string out14=KnobOption14.Value();
+    cacheSimFlag=atoi(out14.c_str());
+    if(cacheSimFlag || traceConsolFlag ){
+      cacheSimFlag=1;
+      //outFile_csimName=g_pwd+"/"+currTimePostfix+"/csim.out";
+      outFile_csimName=g_pwd+"/"+currTimePostfix+"/cachesim.dat";
+      //cout<<"hoge"<<endl;
+#if 0
+      cout<<"non-temporal op "<<dec<< 
+	XED_ICLASS_MASKMOVDQU<<" "<<
+	XED_ICLASS_MASKMOVQ<<" "<<
+	XED_ICLASS_VMASKMOVDQU<<" "<<
+	XED_ICLASS_VMASKMOVPD<<" "<<
+	XED_ICLASS_VMASKMOVPS<<" "<<
+	XED_ICLASS_VPMASKMOVD<<" "<<
+	XED_ICLASS_VPMASKMOVQ<<" "<<
+	XED_ICLASS_MOVNTDQ<<" "<<
+	XED_ICLASS_MOVNTI<<" "<<    
+	XED_ICLASS_MOVNTPD<<" "<<
+	XED_ICLASS_MOVNTPS<<" "<<
+	XED_ICLASS_MOVNTQ<<" "<<
+	XED_ICLASS_MOVNTSD<<" "<<
+	XED_ICLASS_MOVNTSS<<" "<<   
+	XED_ICLASS_VMOVNTDQA<<" "<< 
+	XED_ICLASS_VMOVNTDQ<<" "<<  
+	XED_ICLASS_VMOVNTPD<<" "<<  
+	XED_ICLASS_VMOVNTPS<<endl;
+#endif
+
+
+      string out15=KnobOption15.Value();
+      //cout<<"cache.config file name:  "<<out15<<endl;
+      ifstream in;
+      in.open(out15.c_str());
+
+      if( !in ){    
+	string exana_pwd;
+	if(getenv("EXANA_DIR"))
+	  exana_pwd=getenv("EXANA_DIR");
+	
+	if(exana_pwd.empty()){
+	  outFileOfProf << "Error: $EXANA_DIR is not set up yet."<< endl;
+	  exit(1);
+	}
+
+	string newConfigName=exana_pwd+"/cache.config";
+	in.open(newConfigName.c_str());
+
+	if(!in){
+	  outFileOfProf << "Error: cannot open cacheConfig file:  " <<out15  <<" and "<< newConfigName<< endl;
+	  exit(1);
+	}
+	else
+	  outFileOfProf << "open cacheConfig file:  " << newConfigName<< endl;
+      }
+      else
+	outFileOfProf << "open cacheConfig file:  " <<out15  << endl;
+
+      memRangeName=g_pwd+"/"+currTimePostfix+"/meminstr.dat";
+      confMissOriginName=g_pwd+"/"+currTimePostfix+"/lineconf.dat";
+
+      string buf;
+
+      while(in && getline(in, buf)) {
+	int loc1=buf.find("L1",0);
+	int loc2=buf.find("L2",0);
+	int loc3=buf.find("L3",0);
+	int loc4=buf.find("blocksize",0);
+	string asize, away;
+	int size, way;
+
+	//cout << buf << ", "<<loc1<<endl;
+
+	asize=buf.substr(3,buf.find("B",3)-3);
+	
+	int s=asize.find("K");
+	int ss=asize.find("M");
+	if(s!=-1){
+	  asize.substr(0, s);
+	  size=atoi(asize.substr(0, s).c_str())*1024;
+	}
+	else if(ss!=-1){
+	  asize.substr(0, s);
+	  size=atoi(asize.substr(0, s).c_str())*1024*1024;
+	}
+	else
+	  size=atoi(asize.c_str());
+	
+	away=buf.substr(buf.find("B",3)+1, buf.find("way",3)-buf.find("B",3)-1);
+	way=atoi(away.c_str());
+	  //cout<<dec<<"size "<<size<<" way "<<way<<endl;
+	if(loc1!=-1){
+	  l1_cache_size=size;
+	  l1_way_num=way;
+	  //cout<<loc1<<" "<<buf.find("B",loc1)<<endl;;
+	}
+	else if(loc2!=-1){
+	  l2_cache_size=size;
+	  l2_way_num=way;
+	}
+	else if(loc3!=-1){
+	  l3_cache_size=size;
+	  l3_way_num=way;
+	}
+	else if(loc4!=-1){
+	  asize=buf.substr(10, buf.find("B",10)-1);
+	  //cout<<asize<<endl;
+	  size=atoi(asize.c_str());
+ 
+	  block_size=size;
+	}
+	//cout<<dec<<"size "<<size<<" way "<<way<<endl;
+      }
+
+      outFileOfProf<<"CacheSim  Config.  "<<dec<<l1_cache_size<<" "<<l1_way_num<<" "<<l2_cache_size<<" "<<l2_way_num<<" "<<l3_cache_size<<" "<<l3_way_num<<"          block_size="<<block_size<<"   #set "<<dec<<l1_cache_size/l1_way_num/block_size<<" "<<l2_cache_size/l2_way_num/block_size<<" "<<l3_cache_size/l3_way_num/block_size<<endl;
+      if (l1_cache_size==0 || l1_way_num==0 || l2_cache_size==0 || l2_way_num==0 || block_size==0) {
+	outFileOfProf<<"Error: L1 and L2 size&way, blocksize must be defined in cache.config file\n";
+	exit(1);
+      }
+
+      //outFileOfProf<<"CacheSim ---------------------------\n";
+
+#if 0
+      l1_cache_size=32 * KBYTE;
+      l1_way_num=8;
+      
+      l2_cache_size=256 * KBYTE;
+      l2_way_num=8;
+      
+      l3_cache_size=10 * MBYTE;
+      l3_way_num=20;
+      block_size=64;
+#endif
+
+#if 0
+#ifdef CSIM_1
+      cCache3l* tmp = new cCache3l(l1_cache_size, l1_way_num, CACHE_PRIVATE,
+                                   l2_cache_size, l2_way_num, CACHE_PRIVATE,
+                                   l3_cache_size, l3_way_num, CACHE_PRIVATE, block_size);
+      c3l.push_back(tmp);
+      PIN_MutexInit(&csim_mutex);
+#else
+      csim_init(l1_cache_size, l1_way_num, l2_cache_size, l2_way_num, l3_cache_size, l3_way_num, block_size);
+#endif
+#endif
+      
+      outFileOfProf<<"CacheSim  Config.  "<<dec<<l1_cache_size<<" "<<l1_way_num<<" "<<l2_cache_size<<" "<<l2_way_num<<" "<<l3_cache_size<<" "<<l3_way_num<<"          block_size="<<block_size<<"   #set "<<dec<<l1_cache_size/l1_way_num/block_size<<" "<<l2_cache_size/l2_way_num/block_size<<" "<<l3_cache_size/l3_way_num/block_size<<endl;
+
+    }
+#endif      
 
 
     if(mlm==MallocdMode){

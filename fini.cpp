@@ -31,7 +31,7 @@ extern UINT64 cycle_whenIndirectCall;
 extern UINT64 cycle_whenMemoryWrite;
 extern UINT64 cycle_whenMemoryRead;
 extern UINT64 cycle_whenMemOperation;
-UINT64 cycle_whenCacheSim=0;
+extern UINT64 cycle_whenCacheSim;
 
 FILE *outFileOfLCCTM;
 
@@ -66,7 +66,7 @@ void updateLoopTripInfoAtFini(void)
     //cout<<"Fini  currNode "<<hex<<currNode<<"  ";  printNode(currNode); 
 
     // Instead of loop outEdge, update loop trip counter
-    while(currNode!=rootNodeOfTree[threadid]){
+    while(currNode && currNode!=rootNodeOfTree[threadid]){
       //cout<<"currNode "<<hex<<currNode<<"  ";  printNode(currNode); 
       if(currNode->type==loop){
 	//struct loopTripInfoElem *elem=currNode->loopTripInfo;
@@ -151,15 +151,24 @@ void printProfileInfo(void){
     outFileOfProf<<endl;
   }
 
+
+
   if(profMode==LCCTM || workingSetAnaFlag==1){
-    checkHashAndLWT();
+    // just for first thread for test
+    for(UINT i=0;i<tid_list.size();i++){
+      THREADID tid=tid_list[i];
+      ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, tid) );
+
+      outFileOfProf<<"  thread "<<dec<<tid<<endl;    
+      tls->checkHashAndLWT();
     
-    outFileOfProf<<"   n_page                                   "<<dec<<setw(14)<<n_page<<endl;
-    if(profMode==LCCTM){
-      outFileOfProf<<"   working data set size (touch-page)       "<<setw(14)<<n_page*(1<<entryBitWidth)/1024<<" KB  ("<<n_page<<")"<<endl;
-      outFileOfProf<<"   working data set size (read)             "<<setw(14)<<calcWorkingDataSize(r)/1024<<" KB  ("<<calcWorkingDataSize(r)<<")"<<endl;
-      outFileOfProf<<"   working data set size (write)            "<<setw(14)<<calcWorkingDataSize(w)/1024<<" KB  ("<<calcWorkingDataSize(w)<<")"<<endl;
-      outFileOfProf<<"   working data set size (either)           "<<setw(14)<<calcWorkingDataSize(either)/1024<<" KB  ("<<calcWorkingDataSize(either)<<")"<<endl;
+#if 0
+      //outFileOfProf<<"   working data set size (touch-page)       "<<setw(14)<<n_page*(1<<entryBitWidth)/1024<<" KB  ("<<n_page<<")"<<endl;
+	outFileOfProf<<"   working data set size (read)             "<<setw(14)<<tls->calcWorkingDataSize(r)/1024<<" KB  ("<<tls->calcWorkingDataSize(r)<<")"<<endl;
+	outFileOfProf<<"   working data set size (write)            "<<setw(14)<<tls->calcWorkingDataSize(w)/1024<<" KB  ("<<tls->calcWorkingDataSize(w)<<")"<<endl;
+	outFileOfProf<<"   working data set size (either)           "<<setw(14)<<tls->calcWorkingDataSize(either)/1024<<" KB  ("<<tls->calcWorkingDataSize(either)<<")"<<endl;
+#endif
+
     }
   }
 
@@ -345,8 +354,53 @@ void printMmap()
 
 }
 
-bool FiniFlag=0;
+void outputMmap()
+{
+  char path[N_PATH];
+  pid_t pid=getpid();
 
+  snprintf(path, N_PATH, "/proc/%d/maps",pid);
+  //cout<<path<<"   PIN_GetPid " <<dec<<PIN_GetPid()<<endl;;
+
+  /*
+  int fd=open(path, O_RDONLY);
+  if(fd<0){
+    printf("ERROR: failed to open %s\n",path);
+  }
+  */
+  FILE *fp=fopen(path,"r");
+  if(fp==NULL){
+    printf("ERROR: failed to open %s\n",path);
+  }
+
+  std::ofstream outFileOfMmap;
+  string outFileOfMmapName=currTimePostfix+"/procmmap.out";
+  outFileOfMmap.open(outFileOfMmapName.c_str());
+
+  char buf[256];
+  char test[6];
+
+  while ((fgets (buf, 256, fp)) != NULL) {
+    //memcpy(test,buf,6);
+    //fputs (buf, stdout);
+
+    outFileOfMmap<<buf;
+#if 0
+    if(strcmp(test,"VmPeak")==0)
+      fputs (buf, stdout);
+    if(strcmp(test,"VmHWM:")==0)
+      fputs (buf, stdout);
+    if(strcmp(test,"VmRSS:")==0)
+      fputs (buf, stdout);
+#endif
+  }
+
+  outFileOfMmap.close();
+
+}
+
+bool FiniFlag=0;
+extern UINT64 n_cacheSim_eval;
 VOID Fini(INT32 code, VOID *v)
 
 {
@@ -358,11 +412,6 @@ VOID Fini(INT32 code, VOID *v)
 
   if(profMode==PLAIN){
     outFileOfProf<<"Fini:   Total_time      "<< setw(10)<< setprecision(2) << fixed<<(double) totalTime<<" [s]"<<endl;
-    return;
-  }
-
-  if(profMode==STATIC_0){
-    outFileOfProf<<"Fini:   Total_time      "<< setw(10)<< setprecision(2) << fixed<<(double) totalTime<<" [s]\n  ExanaDBT did not work because the target kernel was not detect again"<<endl;
     return;
   }
 
@@ -383,6 +432,7 @@ VOID Fini(INT32 code, VOID *v)
 
 
   //printMmap();
+  outputMmap();
 
   //extern void printTraceTable();
   //printTraceTable();
@@ -411,12 +461,12 @@ VOID Fini(INT32 code, VOID *v)
     //return;
   }
 
-
-
+  outFileOfProf<<"printStaticLoopInfo()"<<endl;
   if(profMode==LCCTM || profMode==LCCT){
     // for loop info in static.out
-    // printStaticLoopInfo();
+    printStaticLoopInfo();
   }
+
 
 
   if(rootNodeOfTree.size()==0 && (profMode!=SAMPLING && profMode!=TRACEONLY && profMode!=PLAIN && profMode!=INTERPADD)){
@@ -444,8 +494,10 @@ VOID Fini(INT32 code, VOID *v)
 
     printProfileInfo();
 
-  updateLoopTripInfoAtFini();
+    outFileOfProf<<"updateLoopTripInfoAtFini():"<<endl;
+    updateLoopTripInfoAtFini();
 
+    outFileOfProf<<"countAndResetWorkingSet():"<<endl;
   if(workingSetAnaFlag){  
     //THREADID threadid=tid_map[PIN_GetTid()];
     THREADID threadid=PIN_ThreadId();
@@ -458,7 +510,8 @@ VOID Fini(INT32 code, VOID *v)
       FiniFlag=1;
       while(curr){
 	//cout<<"countWorkingSet & pop ";printNode(curr);
-	countAndResetWorkingSet(curr);
+	ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
+	tls->countAndResetWorkingSet(curr);
 	curr=curr->parent;
       }
     }
@@ -474,6 +527,23 @@ VOID Fini(INT32 code, VOID *v)
 
   //outputCSV();
 
+  if(cacheSimFlag){
+    outFileOfProf<<"\nCacheSim result:         "<<endl;
+
+    if(profMode==SAMPLING)
+      outFileOfProf<<"#cacheSim_eval = "<<dec<<n_cacheSim_eval<<endl;
+
+    printCacheStat();
+    outputByInst(); 
+
+#if 0
+    print_outFile_csim();
+    //if(cCache3l::byInstAdr)
+    //cout<<"hoge  "<<endl;
+    //c3l->Print();
+    c3l[0]->outputByInst();
+#endif
+  }
 
 
   //outFileOfProf<<"\n init_accumStat"<<endl;
@@ -506,105 +576,48 @@ VOID Fini(INT32 code, VOID *v)
     //show_tree_dfs(rootNodeOfTree[i],0); 
   }
 
-  if(rootNodeOfTree.size()>0){
+  for(unsigned int i=0;i<rootNodeOfTree.size();i++){
+    outFileOfProf<<"Binary output for thread="<<dec<<i<< " starts  "<<outLCCTFileName<<endl;
 
-  outFileOfProf<<"Binary output start  "<<outLCCTFileName<<endl;
-
-  num=calc_numNode(rootNodeOfTree[0]);
-
-
-  //cout<<"numNode="<<dec<<num<<endl;
-  outFileOfLCCTM=fopen(outLCCTFileName.c_str(), "wb");
-  if( outFileOfLCCTM==NULL){
-    outFileOfProf<<"We cannot open lcctm.dat at Fini()  pwd="<<getenv("PWD")<<endl;
-    return;
-  }
-  else{
-    outFileOfProf<<"generating binary output"<<endl;
-  }
-
-  char s0[6]="Exana";
-  UINT32 a0=0;
-  char *s1;
-  char ss1[6]="LCCTM";
-  char ss2[6]="wsAna";
-  if(workingSetAnaMode==1)
-    s1=ss2;
-  else
-    s1=ss1;
-
-  //cout<<s1<<endl;
-
-  fwrite(&s0, sizeof(char), 6, outFileOfLCCTM);
-  fwrite(&a0, sizeof(UINT32), 1, outFileOfLCCTM);
-  fwrite(s1, sizeof(char), 6, outFileOfLCCTM);
-
-  fwrite(&num, sizeof(UINT64), 1, outFileOfLCCTM);
-  fwrite(&cntMode, sizeof(enum cntModeT), 1, outFileOfLCCTM);
-  output_treeNode_dfs(rootNodeOfTree[0], outFileOfLCCTM);
-  output_gListOfLoop(outFileOfLCCTM);
-  fclose(outFileOfLCCTM);
-
-  outFileOfProf<<"OK: generated"<<endl;
-
-  }
-
-  if(profMode==LCCTM){
-    initDepNodeTable();
-  }
-
-
-
-#if 0
-  char lcctm_file_name[]="lcctm.out";
-  FILE *fp=fopen(lcctm_file_name, "rb");
-  treeNode *copiedTree=readLCCTM(fp);
-
-  if(!feof(fp)){
-    struct gListOfLoops *new_gListOfloop=read_gListOfLoop(fp);
-    //cerr<<"old ptr of gListOfloop "<<hex<<head_gListOfLoops<<endl;
-    head_gListOfLoops=new_gListOfloop;
-    //cerr<<"new ptr of gListOfloop "<<hex<<head_gListOfLoops<<endl;
-    //printStaticLoopInfo();
-  }
-
-  fclose(fp);
-
-
-  show_tree_dfs(copiedTree,0); 
-  buildDotFileOfNodeTree_mem2(copiedTree);
-
-  return;
-#endif
-  
-#if 0
-  // for generating dot file
-  int topN=8;
-  if(cntMode==instCnt){
-    makeOrderedListOfTimeCnt(rootNodeOfTree[0], topN, instCntMode);
-    summary_threshold=getMinimumAccumTimeCntFromN(topN, instCntMode);
-    summary_threshold_ratio=(float)summary_threshold*100/totalInst;
+    num=calc_numNode(rootNodeOfTree[i]);
+    char str[32];
+    snprintf(str, 32, "%d", i);
+    string fname=outLCCTFileName+"."+str;
+    //cout<<"numNode="<<dec<<num<<endl;
+    outFileOfLCCTM=fopen(fname.c_str(), "wb");
+    if( outFileOfLCCTM==NULL){
+      outFileOfProf<<"We cannot open lcctm.dat at Fini()  pwd="<<getenv("PWD")<<endl;
+      return;
+    }
+    else{
+      outFileOfProf<<"generating binary output"<<endl;
+    }
     
+    char s0[6]="Exana";
+    UINT32 a0=0;
+    char *s1;
+    char ss1[6]="LCCTM";
+    char ss2[6]="wsAna";
+    if(workingSetAnaMode==1)
+      s1=ss2;
+    else
+      s1=ss1;
+
+    //cout<<s1<<endl;
+
+    fwrite(&s0, sizeof(char), 6, outFileOfLCCTM);
+    fwrite(&a0, sizeof(UINT32), 1, outFileOfLCCTM);
+    fwrite(s1, sizeof(char), 6, outFileOfLCCTM);
+
+    fwrite(&num, sizeof(UINT64), 1, outFileOfLCCTM);
+    fwrite(&cntMode, sizeof(enum cntModeT), 1, outFileOfLCCTM);
+    output_treeNode_dfs(rootNodeOfTree[i], outFileOfLCCTM);
+    output_gListOfLoop(outFileOfLCCTM);
+    fclose(outFileOfLCCTM);
+
+    outFileOfProf<<"OK: generated"<<endl;
+
   }
-  else{
-    outFileOfProf<<"calc_accumCycleCnt start "<<endl;
-    outFileOfProf<<" -- rootNodeOfTree[0] "<<hex<<rootNodeOfTree[0]<<endl;
-    calc_accumCycleCnt(rootNodeOfTree[0]);
-    //summary_threshold=(UINT64) ((double)cycle_application*0.0274);
-
-    outFileOfProf<<"makeOrderedListOfTimeCnt start "<<endl;
-    makeOrderedListOfTimeCnt(rootNodeOfTree[0], topN, cycleCntMode);
-    outFileOfProf<<"getMinimumAccumTimeCntFormN start "<<endl;
-    summary_threshold=getMinimumAccumTimeCntFromN(topN, cycleCntMode);
-    summary_threshold_ratio=(float)summary_threshold*100/numDyCycle;
-
-  }
-    outFileOfProf<<"summary_threshold is  "<<summary_threshold<<"  ("<<summary_threshold_ratio<<" %)"<<endl;
-    //buildDotFileOfNodeTree_mem2(rootNodeOfTree[0]);
-#endif
-    
-   
-
 
 
 
@@ -634,6 +647,10 @@ VOID Fini(INT32 code, VOID *v)
   //show_tree_dfs(rootNodeOfTree[0],0); 
 
   outFileOfProf<<endl;
+
+  if(profMode==LCCTM){
+    initDepNodeTable();
+  }
 
   for(unsigned int i=0;i<rootNodeOfTree.size();i++){
     outFileOfProf<<"threadid="<<dec<<i<<"  ----------------------------"<<endl;

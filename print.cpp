@@ -664,6 +664,31 @@ void calcStaticInstStatInLoop(int rtnID, int bblID)
   return ;
 
 }
+#include<list>
+void printBblsInLoop(int rtnID, int bblID)
+{
+  list<int> blist;
+
+  PredElem *pred=rtnArray[rtnID]->loopRegion[bblID];
+  //outFileOfStaticInfo<<"\n    loop region of "<<dec<<bblID<<" : ";
+  
+  while(pred){
+    //outFileOfStaticInfo<<pred->id<<" ";
+    blist.push_front(pred->id);
+    if(pred->next==NULL) break;
+    else pred=pred->next;
+  }
+
+  blist.sort();
+  list<int>::iterator it = blist.begin();
+  while(it != blist.end()){
+    outFileOfStaticInfo<<*it<<" ";
+    it++;
+  }
+
+  return ;
+
+}
 
 
 void printStaticLoopInfo(void)
@@ -672,6 +697,9 @@ void printStaticLoopInfo(void)
   outFileOfStaticInfo<<"                                                  memAccess                   InstMix    \n";
   outFileOfStaticInfo<<"loopID  bblID  instAdr          rtnName      RWsize /access  Flop B/F  vElem       x86|vec|MUL       LoopType\n";
   struct gListOfLoops *curr_gList=head_gListOfLoops;
+
+  list<int> rtnList;
+
   while(curr_gList){
 
     //outFileOfStaticInfo<<"curr="<<hex<<curr_gList<<endl;
@@ -686,6 +714,7 @@ void printStaticLoopInfo(void)
 #if 1    
     //int rtnID=getRtnID(&(curr_gList->rtnName));
     int rtnID=curr_gList->rtnID;
+    rtnList.push_front(rtnID);
 
     calcStaticInstStatInLoop(rtnID, curr_gList->bblID);
     outFileOfStaticInfo<<dec<<setw(7)<<memAccessSize<<"  "<<setw(3)<<fixed<<setprecision(1)<<(float)memAccessSize/memAccessCnt<<" "<<setw(5)<<n_flop<<" ";
@@ -721,6 +750,40 @@ void printStaticLoopInfo(void)
 
     curr_gList=curr_gList->next;
   }
+
+
+
+  outFileOfStaticInfo<<"\n\n ***** Print Bbls in each loop *****\n";
+
+  outFileOfStaticInfo<<"loopID headBbl : bbls\n";
+
+  curr_gList=head_gListOfLoops;
+  while(curr_gList){
+
+    //outFileOfStaticInfo<<"curr="<<hex<<curr_gList<<endl;
+
+    outFileOfStaticInfo<<setw(6)<<dec<<curr_gList->loopID<<" "<<setw(7)<<curr_gList->bblID<<" : ";
+    int rtnID=curr_gList->rtnID;
+    printBblsInLoop(rtnID, curr_gList->bblID);
+    outFileOfStaticInfo<<endl;
+    printLoopIn(outFileOfStaticInfo, curr_gList->bblID, rtnID);
+    printLoopOut(outFileOfStaticInfo, curr_gList->bblID, rtnID);
+    curr_gList=curr_gList->next;
+  }
+
+  outFileOfStaticInfo<<"\n\n ***** Print Bbls that contain loops *****\n";
+  rtnList.sort();
+  rtnList.unique();
+  list<int>::iterator it = rtnList.begin();
+  while(it != rtnList.end()){
+    outFileOfStaticInfo << "Rtn: " << hex<<setw(8) << *it << " " << demangle((*(rtnArray[*it]->rtnName)).c_str()) << endl;  
+    printBbl(outFileOfStaticInfo, *it);
+    outFileOfStaticInfo<<endl;
+    buildDotFileOfCFG_Bbl(*it);
+    it++;
+  }
+
+	      
 }
 
 

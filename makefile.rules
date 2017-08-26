@@ -48,7 +48,9 @@ SA_TOOL_ROOTS :=
 APP_ROOTS :=
 
 # This defines any additional object files that need to be compiled.
-OBJECT_ROOTS := staticAna loopMarkers memAna loopContextProf main print file generateDot instStat MemPatMakeStr idorder MemPat replaceRtn OrderPat OrderPatMakeStr getOptions utils fini
+OBJECT_ROOTS := staticAna loopMarkers memAna loopContextProf main print file generateDot instStat MemPatMakeStr idorder MemPat replaceRtn OrderPat OrderPatMakeStr getOptions utils fini cacheSim sampling
+
+# csim cCache3l Cache_Set Cache_Parameter Cache_Ctrl Cache_Body Cache_Block CRC_replacement_state 
 
 #OBJ := staticAna.o loopMarkers.o memAna.o loopContextProf.o main.o 
 OBJ := $(OBJECT_ROOTS:%=$(OBJDIR)%$(OBJ_SUFFIX))
@@ -107,15 +109,6 @@ main.h : genarateDot.h print.h file.h
 
 instStat.o : instStat.h staticAna.h loopMarkers.h loopContextProf.h memAna.h
 
-#replacement_state.o: CRC_replacement_state.h CRC_replacement_state.cpp CRC_replacement_dip.h CRC_replacement_cache_defs.h
-
-#cCache3l.o: cCache3l.cpp cCache3l.h replacement_state.cpp
-#Cache_Set.o: Cache_Set.cpp Cache_Set.h
-#Cache_Parameter.o: Cache_Parameter.cpp Cache_Parameter.h
-#Cache_Ctrl.o: Cache_Ctrl.cpp Cache_Ctrl.h
-#Cache_Body.o: Cache_Body.cpp Cache_Body.h
-#Cache_Block.o: Cache_Block.cpp Cache_Block.h
-#csim.o: csim.cpp csim.h
 
 
 
