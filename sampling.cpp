@@ -169,6 +169,8 @@ bool checkCycleCntForSim()
   UINT64 t1;
   RDTSC(t1);
 
+  //cout<<"checkCycleCntForSim: "<<dec<<t1<<"  tid="<<PIN_ThreadId()<<" "<<start_cycle_sim<< " "<<prev_cycle_sim_end<<" "<<t_period_sim<<endl;
+
   if(t1 < max(start_cycle_sim, prev_cycle_sim_end) + t_period_sim )
     return 0;
 

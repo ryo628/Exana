@@ -5006,6 +5006,13 @@ VOID insertMarkerForTrace(TRACE trace, VOID *v)
 
   if(profMode==PLAIN)return;
 
+  if(profMode==SAMPLING){
+    //cout<<"samplingSim()"<<endl;
+    INS headInst=BBL_InsHead(TRACE_BblHead(trace));   
+    samplingSim(headInst);  
+    //return;
+  }
+
   if(profMode==INTERPADD)return;
 
   UINT64 t1,t2;    
@@ -5015,7 +5022,7 @@ VOID insertMarkerForTrace(TRACE trace, VOID *v)
   cycle_application+= t2;
 
 
-  //DPRINT<<"insertMarkerForTrace"<<endl;
+  //cout<<"insertMarkerForTrace"<<endl;
   int rtnID=-1;
 
   //int tid=PIN_GetTid();

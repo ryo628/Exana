@@ -367,7 +367,7 @@ inline UINT64 getCycleCnt(void){
 
 
 
-#if 0
+#if 1
 void checkInstStatInRtn(RTN rtn, int *rtnIDval)
 {
   //currRtnName=new string(RTN_Name(rtn));
@@ -389,6 +389,7 @@ void checkInstStatInRtn(RTN rtn, int *rtnIDval)
   if(rtnID!=-1){
     //if(rtnArray[rtnID]->bblArray[0].headAdr<=headInstAdr && headInstAdr <= rtnArray[rtnID]->bblArray[rtnArray[rtnID]->bblCnt-1].headAdr){
 
+#if DFG_ANA
     bool DFGflag=0;
     if(DFG_bbl_head_adr){
       if(rtnArray[rtnID]->bblArray[0].headAdr==DFG_bbl_head_adr){  // compare the top address of rtn
@@ -398,6 +399,7 @@ void checkInstStatInRtn(RTN rtn, int *rtnIDval)
 	//outFileOfProf<<"xed_dot_graph_supp_create"<<endl;
       }
     }
+#endif
 
     int numInst=0;
     for(int j=0;j<rtnArray[rtnID]->bblCnt;j++){
@@ -502,7 +504,7 @@ void checkInstStatInRtn(RTN rtn, int *rtnIDval)
 	xed_format_context(XED_SYNTAX_INTEL, xedd, out_buffer, buffer_len, 0, 0, 0);
 	cout<<out_buffer<<endl;
 #endif
-
+#if DFG_ANA
 	if(DFGflag){
 	  //xed_dot_graph_add_instruction(gs, xedd, INS_Address(inst), NULL);
 	  //string inst_name=INS_Disassemble(inst);
@@ -515,7 +517,7 @@ void checkInstStatInRtn(RTN rtn, int *rtnIDval)
 	  xed_dot_graph_add_instruction2(gs, xedd, INS_Address(inst), out_buffer);
 
 	}
-
+#endif
 
 
 	UINT flop=0;
@@ -569,6 +571,7 @@ void checkInstStatInRtn(RTN rtn, int *rtnIDval)
       }
       /////////////// while loop end //////////////////////////////
 
+#if DFG_ANA
     if (gs && DFGflag) {
       FILE *dot_graph_output=fopen(outDFG_FileName.c_str(),"w");
       xed_dot_graph_dump(dot_graph_output, gs);
@@ -576,6 +579,8 @@ void checkInstStatInRtn(RTN rtn, int *rtnIDval)
       outFileOfProf<<"DFG.dot generated, #inst="<<dec<<numInst<<endl;
       //xed_dot_graph_supp_deallocate(gs);
     }
+#endif
+
 
 
 #ifdef FUNC_DEBUG_MODE
