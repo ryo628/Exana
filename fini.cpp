@@ -378,7 +378,7 @@ void outputMmap()
   outFileOfMmap.open(outFileOfMmapName.c_str());
 
   char buf[256];
-  char test[6];
+  //char test[6];
 
   while ((fgets (buf, 256, fp)) != NULL) {
     //memcpy(test,buf,6);
