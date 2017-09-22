@@ -30,7 +30,7 @@ VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
   outFileOfProf<<"[ThreadStart] tid="<<threadid<<endl;
   //" IsAppThread?="<<PIN_IsApplicationThread() <<endl;
 
-  if(cacheSimFlag || mlm || profMode==INTERPADD){
+  if(cacheSimFlag || mlm || profMode==INTERPADD || profMode==LCCTM){
   //if(cacheSimFlag){
     
     //int cpu=-1;

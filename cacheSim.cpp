@@ -279,7 +279,7 @@ ThreadLocalData::ThreadLocalData(THREADID tid)
     L1access=0,L1miss=0,L2miss=0,L3miss=0;
   }
 
-  if(workingSetAnaFlag){  
+  if(workingSetAnaFlag || profMode==LCCTM){  
     outFileOfProf<<"initHashTable"<<endl;
       initHashTable();
   }
