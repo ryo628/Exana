@@ -1846,7 +1846,10 @@ bool ThreadLocalData::isCacheMiss(struct cacheT *c, ADDRINT adr, INT32 size,  st
   // for phisical tag PT
   UINT64 tag1=phyAdr >> (c->line_size_bits);
 
-  UINT64 line1, line2, set1;
+  //UINT64 line1, line2, set1;
+  UINT64 line1=0;
+  UINT64 line2=0;
+  UINT64 set1=0;
 
 #if 1  
   if(c->cacheLevel==clevel1){
