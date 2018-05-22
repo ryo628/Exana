@@ -25,7 +25,9 @@ All Rights Reserved.
 
 //#include "csim.h"
 #include "cacheSim.h"
-#include "sampling.h"
+
+//#include "ExanaDBT.h"
+
 
  /////////////////////////////////////////////////
 
@@ -115,6 +117,8 @@ UINT64 modTime=0;
 bool ExanaAPIFlag=0;
 
 UINT64 last_cycleCnt=0;
+
+#if CYCLE_MEASURE
 UINT64 cycle_application=0;
 
 UINT64 cycle_staticAna_ImageLoad=0;
@@ -127,6 +131,7 @@ UINT64 cycle_whenBbl=0;
 UINT64 cycle_whenRet=0;
 UINT64 cycle_whenFuncCall=0;
 UINT64 cycle_whenIndirectCall=0;
+#endif
 
 
 #if 0
@@ -164,6 +169,7 @@ inline UINT64 getCycleCnt(void){
   RDTSC(start_cycle);
   return start_cycle;
 }  
+
 
 
 bool profileOn=0;
@@ -422,6 +428,8 @@ struct treeNode *addLoopNode(struct treeNode *lastNode, int loopID, enum nodeTyp
   newProcNode->stat->memReadByte=0;
   newProcNode->stat->memWrByte=0;
   newProcNode->stat->n_appearance=1;
+  newProcNode->stat->memAccessCntR=0;
+  newProcNode->stat->memAccessCntW=0;
 
   if(mode==child){
     //cout<<"add child "<<dec<< loopID<<" "<<hex<<newProcNode<<" after "<< lastNode<<" "; printNode(lastNode);
@@ -488,11 +496,13 @@ void whenMultipleInEdgeMarker(int *rtnIDval, ADDRINT instAdr, LoopMarkerElem *lo
 
   if(!allThreadsFlag && threadid!=0) return;
 
+#if CYCLE_MEASURE
   UINT64 t1,t2;    
   t1=getCycleCnt();
   t2= t1-last_cycleCnt;
   cycle_application+= t2;
   if(g_currNode[threadid])  g_currNode[threadid]->stat->cycleCnt+=t2;
+#endif
   //else cout<<"null t="<<dec<<t2;
 
   //cerr<<"IN "<<dec<<threadid<<endl;
@@ -634,9 +644,11 @@ void whenMultipleInEdgeMarker(int *rtnIDval, ADDRINT instAdr, LoopMarkerElem *lo
   if(debugOn)DPRINT<<"multipleInEgde OK"<<endl;
 #endif
 
+#if CYCLE_MEASURE
   t2 = getCycleCnt();
   cycle_whenMarkers+=(t2-t1);
   last_cycleCnt=t2;
+#endif
 }
 
 void updateLoopTripInfo(treeNode *currNode)
@@ -686,13 +698,14 @@ void whenMultipleOutEdgeMarker(int *rtnIDval, ADDRINT instAdr, LoopMarkerElem *l
   //cout<<"OUT "<<dec<<threadid<<endl;
   if(!allThreadsFlag && threadid!=0)  return;
 
+#if CYCLE_MEASURE
   UINT64 t1,t2;    
   t1=getCycleCnt();
   t2= t1-last_cycleCnt;
   cycle_application+= t2;
   if(g_currNode[threadid])  g_currNode[threadid]->stat->cycleCnt+=t2;
   //else cout<<"null t="<<dec<<t2;
-
+#endif
  
   //cycle_application+= t1-last_cycleCnt;
 
@@ -874,9 +887,11 @@ void whenMultipleOutEdgeMarker(int *rtnIDval, ADDRINT instAdr, LoopMarkerElem *l
   if(debugOn){DPRINT<<"outEdge OK:  g_currNode[threadid] = ";printNode(g_currNode[threadid], DPRINT);}
 #endif
 
+#if CYCLE_MEASURE
   t2 = getCycleCnt();
   cycle_whenMarkers+=(t2-t1);
   last_cycleCnt=t2;
+#endif
 
   return;
 }
@@ -1021,6 +1036,7 @@ void whenMultipleHeaderMarker(ADDRINT instAdr, LoopMarkerElem *loopMarker,  int 
   //cerr<<"H "<<dec<<threadid<<endl;
   if(!allThreadsFlag && threadid!=0)  return;
 
+#if CYCLE_MEASURE
   UINT64 t1,t2;    
   t1=getCycleCnt();  
   //cycle_application+= t1-last_cycleCnt;
@@ -1030,7 +1046,7 @@ void whenMultipleHeaderMarker(ADDRINT instAdr, LoopMarkerElem *loopMarker,  int 
   //else cout<<"null t="<<dec<<t2;
   //if(g_currNode[threadid]->stat->n_appearance==0)
   //g_currNode[threadid]->stat->n_appearance++;
-
+#endif
 
 #ifdef LOOP_DEBUG_MODE
   DPRINT<<"loopHeader "<<dec<<g_currNode[threadid]->loopTripInfo->tripCnt<<endl;
@@ -1043,10 +1059,11 @@ void whenMultipleHeaderMarker(ADDRINT instAdr, LoopMarkerElem *loopMarker,  int 
       g_currNode[threadid]->loopTripInfo->tripCnt++;
     }
 
+#if CYCLE_MEASURE
     t2 = getCycleCnt();
     cycle_whenHeaderMarkers+=(t2-t1);
     last_cycleCnt=t2;
-
+#endif
     return;
   }
 
@@ -1054,9 +1071,11 @@ void whenMultipleHeaderMarker(ADDRINT instAdr, LoopMarkerElem *loopMarker,  int 
 
   checkMultipleHeaderMarker(instAdr, loopMarker, rtnID, threadid);
 
+#if CYCLE_MEASURE
   t2 = getCycleCnt();
   cycle_whenHeaderMarkers+=(t2-t1);
   last_cycleCnt=t2;
+#endif
 }
 
 
@@ -1592,13 +1611,14 @@ void whenIndirectBrTakenBblSearch(ADDRINT instAdr, UINT32 bblID, int *rtnID, ADD
 
   if(!allThreadsFlag && threadid!=0)  return;
 
+#if CYCLE_MEASURE
   UINT64 t1,t2;    
   t1=getCycleCnt();  
   t2= t1-last_cycleCnt;
   cycle_application+= t2;
   if(g_currNode[threadid])  g_currNode[threadid]->stat->cycleCnt+=t2;
   //else cout<<"null t="<<dec<<t2;
-
+#endif
 
   //cycle_application+= t1-last_cycleCnt;
 
@@ -1708,10 +1728,11 @@ void whenIndirectBrTakenBblSearch(ADDRINT instAdr, UINT32 bblID, int *rtnID, ADD
   time2+= getCycleCnt()-ttime1;  
 
 
-
+#if CYCLE_MEASURE
   t2 = getCycleCnt();
   cycle_whenIndirectBrSearch+=(t2-t1);
   last_cycleCnt=t2;
+#endif
 }
 
 
@@ -2056,6 +2077,8 @@ void makeFirstNode(THREADID threadid, int rtnID, string rtnName)
       node->stat->memReadByte=0;
       node->stat->memWrByte=0;
       node->stat->n_appearance=1;
+      node->stat->memAccessCntR=0;
+      node->stat->memAccessCntW=0;
 
   if(workingSetAnaFlag){
       node->workingSetInfo=new struct workingSetInfoElem;
@@ -2250,9 +2273,9 @@ void insertMarkersInRtn(RTN rtn, int *rtnIDval, int skipCnt)
       RTN_Open(rtn);
       
       INS rtnHeadInst = RTN_InsHead(rtn);
-      //outFileOfProf<<"insert whenMainStart "<<endl;
-      //INS_InsertCall(rtnHeadInst,IPOINT_BEFORE, AFUNPTR(whenMainStart), IARG_INST_PTR, IARG_THREAD_ID, IARG_END);
-      INS_InsertCall(rtnHeadInst,IPOINT_AFTER, AFUNPTR(whenMainStart), IARG_INST_PTR, IARG_THREAD_ID, IARG_END);
+      //cout<<"insert whenMainStart "<<currRtnNameInStaticAna<<"  " <<hex<<INS_Address(rtnHeadInst)<<endl;
+      INS_InsertCall(rtnHeadInst,IPOINT_BEFORE, AFUNPTR(whenMainStart), IARG_INST_PTR, IARG_THREAD_ID, IARG_END);
+      //INS_InsertCall(rtnHeadInst,IPOINT_AFTER, AFUNPTR(whenMainStart), IARG_INST_PTR, IARG_THREAD_ID, IARG_END);
       RTN_Close(rtn);
       rtn=RTN_Next(rtn);
     }
@@ -2264,7 +2287,7 @@ void insertMarkersInRtn(RTN rtn, int *rtnIDval, int skipCnt)
   while(next_OT || next_OF || next_IT||next_IF||next_HEADER){
 
     rtn=rtnOrig;
-    bool flag=0;
+    //bool flag=0;
     ADDRINT prevAdr=0;//RTN_Address(rtn);
     for(int i=0;i<=skipCnt;i++){
       
@@ -2291,7 +2314,7 @@ void insertMarkersInRtn(RTN rtn, int *rtnIDval, int skipCnt)
 #ifdef DEBUG_MODE_STATIC
 	  if(flag==0)outFileOfProf<<"breaking skipCnt loop  @insetMarkersInRtn "<<hex<<prevAdr<<" "<<INS_Address(inst)<<endl;
 #endif
-	  flag=1;
+	  //flag=1;
 	  continue;
 	}
 
@@ -2501,7 +2524,8 @@ struct treeNode *addCallNode(struct treeNode *lastNode, string *rtnName, int *rt
   newProcNode->stat->memReadByte=0;
   newProcNode->stat->memWrByte=0;
   newProcNode->stat->n_appearance=0;
-
+  newProcNode->stat->memAccessCntR=0;
+  newProcNode->stat->memAccessCntW=0;
 
   if(mode==child){
     //cout<<"add child "<<*rtnName<<" "<<hex<<newProcNode<<" after "<< lastNode<<" "; printNode(lastNode);
@@ -2695,7 +2719,7 @@ bool checkRecList(ADDRINT rtnTopAddr, int * rtnID, THREADID threadid)
 {
   struct treeNodeListElem *elem=g_currNode[threadid]->recNodeList;
   //bool flag=0;
-  struct treeNodeListElem *prevElem=elem;
+  //struct treeNodeListElem *prevElem=elem;
   int cnt=0;
   //DPRINT<<"checkRecList  checked adr="<<hex<<rtnTopAddr<<endl;
   while(elem){    
@@ -2714,7 +2738,7 @@ bool checkRecList(ADDRINT rtnTopAddr, int * rtnID, THREADID threadid)
     
     if(elem==elem->next){DPRINT<<"Error1 @ checkRecList()"<<endl;}
     //if(elem==prevElem&& cnt==0){DPRINT<<"Error2 @ checkRecList() "<<elem->node->rtnTopAddr<<" "<<prevElem->node->rtnTopAddr<<endl;}
-    prevElem=elem;
+    //prevElem=elem;
     elem=elem->next;
     cnt++;
   }
@@ -2928,13 +2952,14 @@ void whenRtnTop(ADDRINT instAddr, string *rtnName, int *rtnID, THREADID threadid
   if(!allThreadsFlag && threadid!=0)
     return;
   
-
+#if CYCLE_MEASURE
   UINT64 t1,t2;    
   t1=getCycleCnt();  
   t2= t1-last_cycleCnt;
   cycle_application+= t2;
   if(g_currNode[threadid])  g_currNode[threadid]->stat->cycleCnt+=t2;
   //else cout<<"null t="<<dec<<t2;
+#endif
 
   //cycle_application+= t1-last_cycleCnt;
 
@@ -2957,9 +2982,11 @@ void whenRtnTop(ADDRINT instAddr, string *rtnName, int *rtnID, THREADID threadid
     if(debugOn)DPRINT<<"whenRtntop OK(rtnID) "<<endl;
 #endif
 
+#if CYCLE_MEASURE
     t2 = getCycleCnt();
     cycle_whenRtnTop+=(t2-t1);
     last_cycleCnt=t2;
+#endif
 
     return ;
   }
@@ -2980,9 +3007,11 @@ void whenRtnTop(ADDRINT instAddr, string *rtnName, int *rtnID, THREADID threadid
     if(debugOn)DPRINT<<"whenRtntop OK "<<endl;
 #endif
 
+#if CYCLE_MEASURE
     t2 = getCycleCnt();
     cycle_whenRtnTop+=(t2-t1);
     last_cycleCnt=t2;
+#endif
 
     return ;
   }
@@ -3054,11 +3083,11 @@ void whenRtnTop(ADDRINT instAddr, string *rtnName, int *rtnID, THREADID threadid
   if(debugOn)DPRINT<<"whenRtnTop OK"<<endl;
 #endif
 
-
+#if CYCLE_MEASURE
   t2 = getCycleCnt();
   cycle_whenRtnTop+=(t2-t1);
   last_cycleCnt=t2;
-
+#endif
 
 }
 
@@ -3173,11 +3202,11 @@ VOID ImageLoad(IMG img, VOID *v)
   //cout<<"ImageLoad"<<endl;
   if(profMode==PLAIN)return;
 
+#if CYCLE_MEASURE
   UINT64 t1,t2;    
   t1=getCycleCnt();    
   t2= t1-last_cycleCnt;
   cycle_application+= t2;
-
 
   if(debugOn && g_currNode.size()>0){
     //THREADID threadid=tid_map[PIN_GetTid()];
@@ -3188,9 +3217,13 @@ VOID ImageLoad(IMG img, VOID *v)
     DPRINT<<"ImageLoad threadid="<<dec<<threadid<<endl;
   
     struct treeNode *currNode=g_currNode[threadid];
+
     if(currNode)  currNode->stat->cycleCnt+=t2;
     ////else cout<<"null t="<<dec<<t2;
   }
+#endif
+
+
 
 
   //if(g_currNode[threadid])  g_currNode[threadid]->stat->cycleCnt+=t2;
@@ -3307,7 +3340,7 @@ VOID ImageLoad(IMG img, VOID *v)
       
     }
 
-  if(profMode==SAMPLING || profMode==TRACEONLY){
+  if(samplingFlag || profMode==TRACEONLY){
 
     return;
   }
@@ -3320,6 +3353,16 @@ VOID ImageLoad(IMG img, VOID *v)
 
       for (RTN rtn = SEC_RtnHead(sec); RTN_Valid(rtn); rtn = RTN_Next(rtn)){
 
+#if 0
+	if(profMode==STATIC_0){
+	  string targetRtnName="mm";
+	  cout<<"ExanaDBT"<<endl;
+	  if(RTN_Name(rtn)==targetRtnName){
+	    ExanaDBT(rtn);
+	  }
+	  cout<<"ExanaDBT OK"<<endl;
+	}
+#endif
 	//outFileOfProf<<"Check rtn "<<RTN_Name(rtn)<<endl;
 
 
@@ -3562,6 +3605,7 @@ VOID ImageLoad(IMG img, VOID *v)
 #if 1
 	  //int *rtnIDval=rtnArray[rtnID]->rtnIDval;
 	  if(profMode!=DTUNE && profMode!=STATIC_0){
+	    //cout << "Rtn: " << hex<<setw(8) << RTN_Address(rtn) << " " << rtnName << "  imageName "<<imageName<<endl;
 	    insertMarkersInRtn(rtn, rtnArray[rtnID]->rtnIDval, skipCnt);
 	  }
 #endif
@@ -3617,10 +3661,11 @@ VOID ImageLoad(IMG img, VOID *v)
       //DPRINT<<"after section loop end  "<<endl;
     }
 
+#if CYCLE_MEASURE
     t2 = getCycleCnt();
     cycle_staticAna_ImageLoad+=(t2-t1);
     last_cycleCnt=t2;
-
+#endif
     //printFuncInfo();
 
     if(libAnaFlag || strcmp(stripPath((*inFileName).c_str()),stripPath(imageName.c_str()))==0){
@@ -3705,12 +3750,14 @@ inline void whenBbl3(struct bblStatT *bblStat, THREADID threadid)
   
   //if(profile_ROI_On==0) return; 
 
-  UINT64 t1,t2;    
-
+  UINT64 t1;
   RDTSC(t1);
-  t2= t1-last_cycleCnt;
+
+#if CYCLE_MEASURE
+  UINT64 t2= t1-last_cycleCnt;
   cycle_application+= t2;
   if(g_currNode[threadid])  g_currNode[threadid]->stat->cycleCnt+=t2;
+#endif
 
 #if 1
   if((workingSetAnaMode==Rmode || workingSetAnaMode==Wmode || workingSetAnaMode==RWmode) && (t1-cycle_main_start>wsInterval*(wsPageListCnt+1))  ){
@@ -3718,7 +3765,8 @@ inline void whenBbl3(struct bblStatT *bblStat, THREADID threadid)
 #if 1
     //if(wsFlag==0 && wsPageListCnt>10){
     if(wsPageListCnt>10){
-      CODECACHE_FlushCache();
+      //CODECACHE_FlushCache();
+      PIN_RemoveInstrumentation();
       //wsFlag=1;
       DPRINT<<"flash "<<endl;
       workingSetAnaFlag=0;
@@ -3760,162 +3808,21 @@ inline void whenBbl3(struct bblStatT *bblStat, THREADID threadid)
     g_currNode[threadid]->stat->memAccessByte += bblStat->memAccessSizeR+ bblStat->memAccessSizeW;
     g_currNode[threadid]->stat->memReadByte += bblStat->memAccessSizeR;
     g_currNode[threadid]->stat->memWrByte += bblStat->memAccessSizeW;
+    g_currNode[threadid]->stat->memAccessCntR += bblStat->memAccessCntR;
+    g_currNode[threadid]->stat->memAccessCntW += bblStat->memAccessCntW;
 
     //DPRINT<<"whenBbl  "<<hex<<instAdr<<"   g_currNode[threadid] ";printNode(g_currNode[threadid], DPRINT);
   }
 
+#if CYCLE_MEASURE
   t2 = getCycleCnt();
   cycle_whenBbl+=(t2-t1);
   last_cycleCnt=t2;
-
+#endif
 
 }
 
-#if 0
-inline void whenBbl3(ADDRINT instAdr, int instCnt, int memAccessSizeR,int memAccessSizeW, int memAccessSize, int base, int fp, int sse, int sse2, int sse3, int sse4, int avx, int flop, int memAccessCntR, int memAccessCntW, THREADID threadid)
-{
-  if(profileOn==0)
-    return;
 
-  if(!allThreadsFlag && threadid!=0)  return;
-  
-  //if(profile_ROI_On==0) return; 
-
-  UINT64 t1,t2;    
-
-  RDTSC(t1);
-  t2= t1-last_cycleCnt;
-  cycle_application+= t2;
-  if(g_currNode[threadid])  g_currNode[threadid]->stat->cycleCnt+=t2;
-
-  if((workingSetAnaMode==Rmode || workingSetAnaMode==Wmode || workingSetAnaMode==RWmode) && (t1-cycle_main_start>wsInterval*(wsPageListCnt+1)) ){
-
-    wsPageListCnt++;
-
-    //cout<<"current cycle = "<<t1-cycle_main_start<<endl;
-    wsPageFile<<"@@@ cycle = "<<dec<<t1-cycle_main_start<<endl;
-
-    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
-    tls->countAndResetWorkingSet(g_currNode[threadid]);
-
-
-    //cout<<dec<<wsPageFile.tellp()<<endl;
-    if(wsPageFile.tellp()/2000000000>0){
-      wsPageFile.close();
-      static int rotateNum=2;
-      char str[32];
-      snprintf(str, 32, "%d", rotateNum);
-      string wsPageFileName=g_pwd+"/"+currTimePostfix+"/wsPage.out."+str;
-      wsPageFile.open(wsPageFileName.c_str());
-      rotateNum++;
-    }
-
-  }
-  
-  totalInst=totalInst+instCnt;
-
-  
-  if(g_currNode[threadid]){
-    g_currNode[threadid]->stat->instCnt = g_currNode[threadid]->stat->instCnt + instCnt;
-    g_currNode[threadid]->stat->FlopCnt += flop;
-    g_currNode[threadid]->stat->memAccessByte += memAccessSize;
-    g_currNode[threadid]->stat->memReadByte += memAccessSizeR;
-    g_currNode[threadid]->stat->memWrByte += memAccessSizeW;
-
-    //DPRINT<<"whenBbl  "<<hex<<instAdr<<"   g_currNode[threadid] ";printNode(g_currNode[threadid], DPRINT);
-  }
-#if 0
-  else{
-    otherInst=otherInst+instCnt;
-  }
-#endif
-  //cout<<endl;
-
-
-
-  acumMemAccessByteR+=memAccessSizeR;
-  acumMemAccessByteW+=memAccessSizeW;
-  acumMemAccessSize+=memAccessSize;
-  acumBaseInst+=base;
-  acumFpInst+=fp;
-  acumSSEInst+=sse;
-  acumSSE2Inst+=sse2;
-  acumSSE3Inst+=sse3;
-  acumSSE4Inst+=sse4;
-  acumAVXInst+=avx;
-  acumFlop+=flop;
-  acumMemAccessCntR+=memAccessCntR;
-  acumMemAccessCntW+=memAccessCntW;
-
-  t2 = getCycleCnt();
-  cycle_whenBbl+=(t2-t1);
-  last_cycleCnt=t2;
-
-
-}
-
-#endif
-
-#if 0
-inline void whenBbl3(ADDRINT instAdr, int instCnt, int memAccessSizeR,int memAccessSizeW, int memAccessSize, int base, int fp, int sse, int sse2, int sse3, int sse4, int avx, int flop, THREADID threadid)
-{
-  if(profileOn==0)
-    return;
-
-  if(!allThreadsFlag && threadid!=0)  return;
-  
-  
-  UINT64 t1,t2;    
-  t1=getCycleCnt();  
-  //cycle_application+= t1-last_cycleCnt;
-  t2= t1-last_cycleCnt;
-  cycle_application+= t2;
-  if(g_currNode[threadid])  g_currNode[threadid]->stat->cycleCnt+=t2;
-  //else cout<<"null t="<<dec<<t2;
-
-
-  
-  totalInst=totalInst+instCnt;
-
-  
-  if(g_currNode[threadid]){
-    g_currNode[threadid]->stat->instCnt = g_currNode[threadid]->stat->instCnt + instCnt;
-    g_currNode[threadid]->stat->FlopCnt += flop;
-    g_currNode[threadid]->stat->memAccessByte += memAccessSize;
-    g_currNode[threadid]->stat->memReadByte += memAccessSizeR;
-    g_currNode[threadid]->stat->memWrByte += memAccessSizeW;
-
-    //DPRINT<<"whenBbl  "<<hex<<instAdr<<"   g_currNode[threadid] ";printNode(g_currNode[threadid], DPRINT);
-  }
-#if 0
-  else{
-    otherInst=otherInst+instCnt;
-  }
-#endif
-  //cout<<endl;
-
-
-
-  acumMemAccessByteR+=memAccessSizeR;
-  acumMemAccessByteW+=memAccessSizeW;
-  acumMemAccessSize+=memAccessSize;
-  acumBaseInst+=base;
-  acumFpInst+=fp;
-  acumSSEInst+=sse;
-  acumSSE2Inst+=sse2;
-  acumSSE3Inst+=sse3;
-  acumSSE4Inst+=sse4;
-  acumAVXInst+=avx;
-  acumFlop+=flop;
-
-  t2 = getCycleCnt();
-  cycle_whenBbl+=(t2-t1);
-  last_cycleCnt=t2;
-
-
-}
-
-#endif
 
 void whenMarkedBbl(ADDRINT *instAdr, unsigned int bblID, THREADID threadid )
 {
@@ -3969,7 +3876,7 @@ VOID whenRet(int *rtnIDval, ADDRINT targetAddr, ADDRINT instAddr, THREADID threa
 
   //outFileOfProf<<"THREAD: whenRet @ "<<hex<<instAddr<<"  threadid="<<dec<<threadid<<" "<<currCallStack[threadid]<<" rtnID="<<*rtnIDval<<endl;    
 
-
+#if CYCLE_MEASURE
   UINT64 t1,t2;    
   t1=getCycleCnt();  
   //cycle_application+= t1-last_cycleCnt;
@@ -3979,7 +3886,7 @@ VOID whenRet(int *rtnIDval, ADDRINT targetAddr, ADDRINT instAddr, THREADID threa
     g_currNode[threadid]->stat->cycleCnt+=t2;
     //countAndResetWorkingSet(g_currNode[threadid]);
   }
-
+#endif
   //else cout<<"null t="<<dec<<t2;
 
 
@@ -4003,11 +3910,11 @@ VOID whenRet(int *rtnIDval, ADDRINT targetAddr, ADDRINT instAddr, THREADID threa
       return;
       // printCallStack(DPRINT, threadid);
 
-
+#if CYCLE_MEASURE
       t2 = getCycleCnt();
       cycle_whenRet+=(t2-t1);
       last_cycleCnt=t2;
-
+#endif
 
 
       exit(1);
@@ -4126,9 +4033,12 @@ VOID whenRet(int *rtnIDval, ADDRINT targetAddr, ADDRINT instAddr, THREADID threa
       }
 #endif
 
+#if CYCLE_MEASURE
       t2 = getCycleCnt();
       cycle_whenRet+=(t2-t1);
       last_cycleCnt=t2;
+#endif
+
       return;
 
       //////////////////////////////////////////////////////////////////
@@ -4316,11 +4226,11 @@ VOID whenRet(int *rtnIDval, ADDRINT targetAddr, ADDRINT instAddr, THREADID threa
   }
 #endif
 
-
+#if CYCLE_MEASURE
   t2 = getCycleCnt();
   cycle_whenRet+=(t2-t1);
   last_cycleCnt=t2;
-
+#endif
 
   
 }
@@ -4365,12 +4275,12 @@ VOID whenFuncCall(ADDRINT instAdr, ADDRINT fallthroughAddr, string *calleeRtnNam
   }
 #endif
 
-
+#if CYCLE_MEASURE
   UINT64 t1,t2;    
   t1=getCycleCnt();  
   t2= t1-last_cycleCnt;
   cycle_application+= t2;
-
+#endif
 
   //cycle_application+= t1-last_cycleCnt;
   //else cout<<"null t="<<dec<<t2;
@@ -4433,8 +4343,9 @@ VOID whenFuncCall(ADDRINT instAdr, ADDRINT fallthroughAddr, string *calleeRtnNam
    }
   }
 
+#if CYCLE_MEASURE
   if(g_currNode[threadid])  g_currNode[threadid]->stat->cycleCnt+=t2;
-  
+#endif  
 
  addCallStack(fallthroughAddr, threadid);
   //DPRINT<<"    g_currNode[threadid], its parent "<<hex<<g_currNode[threadid]<<" "<<g_currNode[threadid]->parent<<" ";printNode2(g_currNode[threadid], DPRINT); DPRINT<<" ";printNode2(g_currNode[threadid]->parent, DPRINT);
@@ -4507,10 +4418,11 @@ VOID whenFuncCall(ADDRINT instAdr, ADDRINT fallthroughAddr, string *calleeRtnNam
   //extern void displayNode(struct treeNode *node, int depth);
   //displayNode(g_currNode[threadid], 0);
 
+#if CYCLE_MEASURE
   t2 = getCycleCnt();
   cycle_whenFuncCall+=(t2-t1);
   last_cycleCnt=t2;
-
+#endif
 
 }
 
@@ -4548,6 +4460,7 @@ void whenIndirectCall(ADDRINT instAdr, ADDRINT fallthroughAdr, ADDRINT targetAdr
     return;
   }
 
+#if CYCLE_MEASURE
   UINT64 t1,t2;    
   t1=getCycleCnt();  
   //cycle_application+= t1-last_cycleCnt;
@@ -4555,6 +4468,7 @@ void whenIndirectCall(ADDRINT instAdr, ADDRINT fallthroughAdr, ADDRINT targetAdr
   cycle_application+= t2;
   if(g_currNode[threadid])  g_currNode[threadid]->stat->cycleCnt+=t2;
   //else cout<<"null t="<<dec<<t2;
+#endif
 
   //if(!allThreadsFlag && threadid!=0) DPRINT<<"whenIndirectCall  threadid="<<dec<<threadid<<endl;
 
@@ -4614,10 +4528,11 @@ void whenIndirectCall(ADDRINT instAdr, ADDRINT fallthroughAdr, ADDRINT targetAdr
 
   }
 
+#if CYCLE_MEASURE
   t2 = getCycleCnt();
   cycle_whenIndirectCall+=(t2-t1);
   last_cycleCnt=t2;
-
+#endif
   //nextRtnName=&currIndirectName;
 
   //cout<<"   indirectCall nama is  "<<*nextRtnName<<endl;
@@ -4741,7 +4656,7 @@ void checkAndInsertPltRetWaitingList(int rtnID, int bblID, INS inst)
 {
 
   struct pltRetWaitingListElem *elem=rtnArray[rtnID]->bblArray[bblID].pltRetList;
-  struct pltRetWaitingListElem *prev=NULL;
+  //struct pltRetWaitingListElem *prev=NULL;
   
   while(elem){
     //DPRINT<<"check waitingList "<<hex<<elem->fallthroughInst<<"  , inst="<<INS_Address(inst)<<endl;
@@ -4752,7 +4667,7 @@ void checkAndInsertPltRetWaitingList(int rtnID, int bblID, INS inst)
       //INS_InsertCall(inst, IPOINT_BEFORE, AFUNPTR(afterPltCall), IARG_PTR, elem->rtnIDval, IARG_ADDRINT,  elem->fallthroughInst,  IARG_ADDRINT,  elem->targetAddress, IARG_REG_VALUE, REG_RBP,  IARG_END);
       INS_InsertCall(inst, IPOINT_BEFORE, AFUNPTR(afterPltCall), IARG_PTR, elem->rtnIDval, IARG_ADDRINT,  elem->fallthroughInst,  IARG_ADDRINT,  elem->targetAddress, IARG_THREAD_ID,  IARG_END);
     }
-    prev=elem;
+    //prev=elem;
     elem=elem->next;
   }
 
@@ -5000,29 +4915,108 @@ void whenMalloc(ADDRINT instAdr, ADDRINT targetAddress)
 
 UINT64 memReadInstCnt=0;
 UINT64 memWriteInstCnt=0;
+#define EXANA_SLOWDOWN_FACTOR 10
+
+__attribute__((always_inline))
+static __inline__ 
+bool checkSamplingInterval()
+{
+  if(samplingSimFlag || PIN_ThreadId()!=0)
+    return 0;
+
+  UINT64 t1;
+  RDTSC(t1);
+
+  //cout<<"checkCycleCntForSim: "<<dec<<t1<<"  tid="<<PIN_ThreadId()<<" "<<start_cycle_sim<< " "<<prev_cycle_sim_end<<" "<<t_period_sim<<endl;
+  UINT64 t=t1-prev_cycle_sim_end;
+  //if(t_period_sim/numThread*EXANA_SLOWDOWN_FACTOR>t )
+  if(t_period_sim*EXANA_SLOWDOWN_FACTOR>t )
+    return 0;
+
+  samplingSimFlag=1;
+  prev_cycle_sim_end=t1;
+  n_memref=prev_memref=0;
+  cout<<"warmup phase:  sim cycle: "<<scientific<<setprecision(2)<<(float)t1-exana_start_cycle<<"  numThread="<<numThread<<endl;
+
+
+  return 1;
+}
+
+__attribute__((always_inline))
+static __inline__ 
+bool isSimPhase()
+{
+  return samplingSimFlag;
+}
 
 VOID insertMarkerForTrace(TRACE trace, VOID *v)
 {
 
   if(profMode==PLAIN)return;
 
-  if(profMode==SAMPLING){
-    //cout<<"samplingSim()"<<endl;
-    INS headInst=BBL_InsHead(TRACE_BblHead(trace));   
-    samplingSim(headInst);  
-    //return;
+#ifdef _EXANADBT_H_
+  if(profMode==STATIC_0){
+
+    INS headInst=BBL_InsHead(TRACE_BblHead(trace));
+    ADDRINT headInstAdr=INS_Address(headInst);
+    RTN rtn=RTN_FindByAddress(headInstAdr);
+    //cout<<"static_0 "<<hex<<headInstAdr<<endl;    
+    if((RTN_Name(rtn)==DBTtargetRtnName) && (RTN_Address(rtn)==headInstAdr)){
+      double t1=getTime_sec();
+      DPRINT<<"[T]  ExanaDBT -- find target kernel:   time  "<< t1-progStartTime<<" [s]"<<endl;
+      //ExanaDBT(rtn);
+      ExanaDBT(trace);
+      double t2=getTime_sec();
+      DPRINT<<"[S]  ExanaDBT -- after kernel switch:    time  "<< t2-progStartTime<<" [s]"<<endl;
+
+      profMode=PLAIN;
+      //profMode=DTUNE;
+    }
+    return;
   }
 
+  if(profMode==DTUNE){
+
+    INS headInst=BBL_InsHead(TRACE_BblHead(trace));   
+    //cout<<"forTrace  "<<hex<<INS_Address(headInst)<<endl;
+    ipSampling(headInst);  
+    //cout<<"OK"<<endl;  
+    return;
+  }
+#else
+  if(profMode==DTUNE||profMode==STATIC_0){
+    cout<<"DTUNE and STATIC_0 are not supported in this version"<<endl;
+    exit(1);
+  }
+
+#endif
+
+  ///*  move to BufferFull()
+#ifdef TRACE_SAMPLING
+  if(samplingFlag){
+
+  INS headInst=BBL_InsHead(TRACE_BblHead(trace));   
+  //INS headInst=TRACE_BblHead(trace);   
+    //checkSamplingInterval(headInst);  
+    INS_InsertCall(headInst, IPOINT_BEFORE,  AFUNPTR(checkSamplingInterval), IARG_END);
+    //return;
+  }
+#endif
+  //  */
+
+
   if(profMode==INTERPADD)return;
+
+#if CYCLE_MEASURE
 
   UINT64 t1,t2;    
   t1=getCycleCnt();  
   //cycle_application+= t1-last_cycleCnt;
   t2= t1-last_cycleCnt;
   cycle_application+= t2;
+#endif
 
-
-  //cout<<"insertMarkerForTrace"<<endl;
+  //DPRINT<<"insertMarkerForTrace"<<endl;
   int rtnID=-1;
 
   //int tid=PIN_GetTid();
@@ -5033,9 +5027,12 @@ VOID insertMarkerForTrace(TRACE trace, VOID *v)
     //DPRINT<<"ForTrace threadid="<<dec<<threadid<<" "<<tid<<endl;
 
     if(!allThreadsFlag && threadid!=0) return;
-  
+
+
+#if CYCLE_MEASURE  
     struct treeNode *currNode=g_currNode[threadid];
     if(currNode && currNode->stat )  currNode->stat->cycleCnt+=t2;
+#endif
 
     if(g_currNode[threadid])
       rtnID=g_currNode[threadid]->rtnID;
@@ -5276,58 +5273,49 @@ VOID insertMarkerForTrace(TRACE trace, VOID *v)
 	  UINT32 refSize = INS_MemoryOperandSize(inst, memOp);
 	  enum fnRW memOpType;
 
-	  if(profMode==SAMPLING){
+	  ///* move to BufferFull
+#ifdef TRACE_SAMPLING
+	  if(samplingFlag){
 	    //cout<<"samplingSimFlag@forTrace  "<<samplingSimFlag<<endl;
 	    if (INS_MemoryOperandIsRead(inst, memOp)) {
 	      memOpType=memRead;
-	      //INS_InsertIfCall(inst, IPOINT_BEFORE,(AFUNPTR)isSamplingSim, IARG_UINT32, samplingSimFlag, IARG_END);
-	      INS_InsertIfCall(inst, IPOINT_BEFORE,(AFUNPTR)isSamplingSim, IARG_END);
-	      //INS_InsertFillBufferPredicated(inst, IPOINT_BEFORE, bufId,    
-	      INS_InsertFillBufferThen(inst, IPOINT_BEFORE, bufId,
-				       IARG_INST_PTR, offsetof(struct MEMREF, pc),
-				       IARG_MEMORYOP_EA, memOp, offsetof(struct MEMREF, ea),
-				       IARG_UINT32, refSize, offsetof(struct MEMREF, size), 
-				       IARG_UINT32, memOpType, offsetof(struct MEMREF, rw), 
-				       IARG_END);
 	    }
-	    if (INS_MemoryOperandIsWritten(inst, memOp)) {
+	    else
 	      memOpType=memWrite;
-	      INS_InsertIfCall(inst, IPOINT_BEFORE,(AFUNPTR)isSamplingSim, IARG_END);
-	      //INS_InsertFillBufferPredicated(inst, IPOINT_BEFORE, bufId,
-	      INS_InsertFillBufferThen(inst, IPOINT_BEFORE, bufId,
-				       IARG_INST_PTR, offsetof(struct MEMREF, pc),
-				       IARG_MEMORYOP_EA, memOp, offsetof(struct MEMREF, ea),
-				       IARG_UINT32, refSize, offsetof(struct MEMREF, size), 
-				       IARG_UINT32, memOpType, offsetof(struct MEMREF, rw), 
-				       IARG_END);
-	    }
+	      
+	      //INS_InsertIfCall(inst, IPOINT_BEFORE,(AFUNPTR)isSamplingSim, IARG_UINT32, samplingSimFlag, IARG_END);
+	    INS_InsertIfCall(inst, IPOINT_BEFORE,(AFUNPTR)isSimPhase, IARG_END);
+	    //INS_InsertFillBufferPredicated(inst, IPOINT_BEFORE, bufId,    
+	    INS_InsertFillBufferThen(inst, IPOINT_BEFORE, bufId,
+				     IARG_INST_PTR, offsetof(struct MEMREF, pc),
+				     IARG_MEMORYOP_EA, memOp, offsetof(struct MEMREF, ea),
+				     IARG_UINT32, refSize, offsetof(struct MEMREF, size), 
+				     IARG_UINT32, memOpType, offsetof(struct MEMREF, rw), 
+				     IARG_END);
 	  }
 	  else{
+#endif
+	    //    	  */
+
 	    if (INS_MemoryOperandIsRead(inst, memOp)) {
 	      memOpType=memRead;
-	      INS_InsertFillBuffer(inst, IPOINT_BEFORE, bufId,
-				       IARG_INST_PTR, offsetof(struct MEMREF, pc),
-				       IARG_MEMORYOP_EA, memOp, offsetof(struct MEMREF, ea),
-				       IARG_UINT32, refSize, offsetof(struct MEMREF, size), 
-				       IARG_UINT32, memOpType, offsetof(struct MEMREF, rw), 
-				       IARG_END);
 	    }
-	    if (INS_MemoryOperandIsWritten(inst, memOp)) {
+	    else
 	      memOpType=memWrite;
-	      INS_InsertFillBuffer(inst, IPOINT_BEFORE, bufId,
-				       IARG_INST_PTR, offsetof(struct MEMREF, pc),
-				       IARG_MEMORYOP_EA, memOp, offsetof(struct MEMREF, ea),
-				       IARG_UINT32, refSize, offsetof(struct MEMREF, size), 
-				       IARG_UINT32, memOpType, offsetof(struct MEMREF, rw), 
-				       IARG_END);
-	    }
-	    
-	  }
 
+	    INS_InsertFillBuffer(inst, IPOINT_BEFORE, bufId,
+				 IARG_INST_PTR, offsetof(struct MEMREF, pc),
+				 IARG_MEMORYOP_EA, memOp, offsetof(struct MEMREF, ea),
+				 IARG_UINT32, refSize, offsetof(struct MEMREF, size), 
+				 IARG_UINT32, memOpType, offsetof(struct MEMREF, rw), 
+				 IARG_END);
 	}
-      }
-
-
+	 
+        }
+#ifdef TRACE_SAMPLING
+	}
+#endif
+      
       
 #if 1
       // If we use FillBuffer and DumpBuffer to access memory traces,
@@ -5484,6 +5472,9 @@ VOID insertMarkerForTrace(TRACE trace, VOID *v)
 	      bblStat->n_flop=n_flop;
 	      bblStat->memAccessSizeR=memAccessSizeR;
 	      bblStat->memAccessSizeW=memAccessSizeW;
+	      bblStat->memAccessCntR=memAccessCntR;
+	      bblStat->memAccessCntW=memAccessCntW;
+	      //cout<<"rtn, bbl: "<<dec<<rtnID<<" "<<bblID<<"   size, cnt = "<<memAccessSizeR<<" "<< memAccessSizeW<<" "<<memAccessCntR<<" "<<memAccessCntW<<endl;
 	      INS_InsertCall(bblHeadInst, IPOINT_BEFORE, AFUNPTR(whenBbl3), IARG_PTR, bblStat, IARG_THREAD_ID, IARG_END);
 
               ////INS_InsertCall(bblHeadInst, IPOINT_BEFORE, AFUNPTR(whenBbl3), IARG_INST_PTR, IARG_UINT32, bblInst, IARG_UINT32, memAccessSizeR, IARG_UINT32, memAccessSizeW, IARG_UINT32, memAccessSize, IARG_UINT32, n_int, IARG_UINT32, n_fp, IARG_UINT32, n_sse, IARG_UINT32, n_sse2, IARG_UINT32, n_sse3, IARG_UINT32,n_sse4, IARG_UINT32, n_avx, IARG_UINT32, n_flop,  IARG_UINT32, memAccessCntR,  IARG_UINT32, memAccessCntW, IARG_THREAD_ID, IARG_END);
@@ -5523,6 +5514,8 @@ VOID insertMarkerForTrace(TRACE trace, VOID *v)
       bblStat->n_flop=n_flop;
       bblStat->memAccessSizeR=memAccessSizeR;
       bblStat->memAccessSizeW=memAccessSizeW;
+      bblStat->memAccessCntR=memAccessCntR;
+      bblStat->memAccessCntW=memAccessCntW;
       INS_InsertCall(bblHeadInst, IPOINT_BEFORE, AFUNPTR(whenBbl3), IARG_PTR, bblStat, IARG_THREAD_ID, IARG_END);
 
       ////INS_InsertCall(bblHeadInst, IPOINT_BEFORE, AFUNPTR(whenBbl3), IARG_INST_PTR, IARG_UINT32, bblInst, IARG_UINT32, memAccessSizeR, IARG_UINT32, memAccessSizeW, IARG_UINT32, memAccessSize, IARG_UINT32, n_int, IARG_UINT32, n_fp, IARG_UINT32, n_sse, IARG_UINT32, n_sse2, IARG_UINT32, n_sse3, IARG_UINT32,n_sse4, IARG_UINT32, n_avx, IARG_UINT32, n_flop,  IARG_UINT32, memAccessCntR,  IARG_UINT32,memAccessCntW, IARG_THREAD_ID, IARG_END);
@@ -5535,9 +5528,12 @@ VOID insertMarkerForTrace(TRACE trace, VOID *v)
   }
   //prevRtnName=*rtnName;
 
+#if CYCLE_MEASURE
+
   t2 = getCycleCnt();
   cycle_staticAna_Trace+=(t2-t1);
   last_cycleCnt=t2;
+#endif
 
   //DPRINT<<"ForTrace OK"<<endl;
 }

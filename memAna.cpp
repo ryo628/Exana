@@ -585,7 +585,7 @@ struct upperAdrListElem *prevElem=NULL;
 
 struct upperAdrListElem * ThreadLocalData::getCurrTableElem(ADDRINT key, ADDRINT effAddr1)
 {
-  struct lastWriteTableElem *curr_lastWriteTable;
+  //struct lastWriteTableElem *curr_lastWriteTable;
 
   struct upperAdrListElem *ptr=hashTable[key];
   //int flag=0;
@@ -613,7 +613,8 @@ struct upperAdrListElem * ThreadLocalData::getCurrTableElem(ADDRINT key, ADDRINT
   newPtr->next=prevPtr;
   //newPtr->useBits=0;
   hashTable[key]=newPtr;
-  curr_lastWriteTable=newPtr->lastWriteTable;
+
+  //curr_lastWriteTable=newPtr->lastWriteTable;
   
   //n_page++;
   //cout<<dec<<n_page<<"  add page for "<<hex<<newPtr->upperAddr<<endl;
@@ -630,18 +631,15 @@ struct upperAdrListElem * ThreadLocalData::getCurrTableElem(ADDRINT key, ADDRINT
 extern bool profileOn;
 
 
-UINT64 memCntR=0;
-UINT64 memCntW=0;
-UINT64 accumulatedMemSizeW=0;
-UINT64 accumulatedMemSizeR=0;
 
-
+#if CYCLE_MEASURE
 UINT64 cycle_whenMemoryWrite=0;
 UINT64 cycle_whenMemoryRead=0;
 UINT64 cycle_whenMemOperation=0;
 
 extern UINT64 last_cycleCnt;
 extern UINT64 cycle_application;
+#endif
 
 inline UINT64 getCycleCnt(void){
   UINT64 start_cycle;
@@ -766,6 +764,7 @@ VOID ThreadLocalData::whenMemOperation(ADDRINT instAddr, ADDRINT effAddr1, UINT3
   if(!allThreadsFlag && threadid!=0)  return;
 
 
+#if CYCLE_MEASURE
   UINT64 t1,t2;    
   //t1=getCycleCnt();
 
@@ -773,6 +772,7 @@ VOID ThreadLocalData::whenMemOperation(ADDRINT instAddr, ADDRINT effAddr1, UINT3
   t2= t1-last_cycleCnt;
   cycle_application+= t2;
   if(g_currNode[threadid])  g_currNode[threadid]->stat->cycleCnt+=t2;
+#endif
 
   if(workingSetAnaFlag){
     analyzeWorkingSet(instAddr, effAddr1, mode, size, threadid);
@@ -780,10 +780,10 @@ VOID ThreadLocalData::whenMemOperation(ADDRINT instAddr, ADDRINT effAddr1, UINT3
   }
 
   if(traceOut==withFuncname){
-    memTraceFile<<dec<<t1-cycle_main_start<<" "; 
+    //memTraceFile<<dec<<t1-cycle_main_start<<" "; 
     printNode2(g_currNode[threadid], memTraceFile);memTraceFile<<" ";
   }
-
+  
 
   if(traceOut==MemtraceMode||traceOut==withFuncname){
     traceCnt++;
@@ -818,10 +818,12 @@ VOID ThreadLocalData::whenMemOperation(ADDRINT instAddr, ADDRINT effAddr1, UINT3
 	  makeIDorder(mode,size,instAddr,effAddr1);
 	  orderpat_call(mode,size,instAddr);
   }
-  
+
+#if CYCLE_MEASURE  
   RDTSC(t2);
   cycle_whenMemOperation+=(t2-t1);
   last_cycleCnt=t2;
+#endif
 }
 
 
@@ -836,7 +838,7 @@ VOID ThreadLocalData::whenMemoryWrite(ADDRINT memInstAddr, ADDRINT effAddr1, UIN
 
   if(!allThreadsFlag && threadid!=0)  return;
 
-
+#if CYCLE_MEASURE
   UINT64 t1,t2;    
   //t1=getCycleCnt();
   RDTSC(t1);
@@ -844,9 +846,7 @@ VOID ThreadLocalData::whenMemoryWrite(ADDRINT memInstAddr, ADDRINT effAddr1, UIN
   cycle_application+= t2;
   if(g_currNode[threadid])  g_currNode[threadid]->stat->cycleCnt+=t2;
   //else cout<<"null t="<<dec<<t2;
-
-  memCntW++;
-  accumulatedMemSizeW+=size;
+#endif
   
   //memRWCheck(memInstAddr, effAddr1, memWrite, size, threadid);
 
@@ -919,11 +919,13 @@ VOID ThreadLocalData::whenMemoryWrite(ADDRINT memInstAddr, ADDRINT effAddr1, UIN
 
     }
   }
-  
+
+#if CYCLE_MEASURE  
   RDTSC(t2);
 
   cycle_whenMemoryWrite+=(t2-t1);
   last_cycleCnt=t2;
+#endif
 }
 
 VOID ThreadLocalData::whenMemoryRead(ADDRINT memInstAddr, ADDRINT effAddr1, UINT32 size, THREADID threadid)
@@ -935,7 +937,7 @@ VOID ThreadLocalData::whenMemoryRead(ADDRINT memInstAddr, ADDRINT effAddr1, UINT
   //DPRINT<<"whenMemoryRead"<<endl;
   if(!allThreadsFlag && threadid!=0)  return;
 
-
+#if CYCLE_MEASURE
   UINT64 t1,t2;    
   //t1=getCycleCnt();
   RDTSC(t1);
@@ -944,10 +946,8 @@ VOID ThreadLocalData::whenMemoryRead(ADDRINT memInstAddr, ADDRINT effAddr1, UINT
   cycle_application+= t2;
   if(g_currNode[threadid])  g_currNode[threadid]->stat->cycleCnt+=t2;
   //else cout<<"null t="<<dec<<t2;
+#endif
 
-
-  memCntR++;
-  accumulatedMemSizeR+=size;
   
   //memRWCheck(memInstAddr, effAddr1, memRead, size, threadid);
 
@@ -1028,10 +1028,11 @@ VOID ThreadLocalData::whenMemoryRead(ADDRINT memInstAddr, ADDRINT effAddr1, UINT
   //bool flag=updateSelfDepFlag(&(elem[offset]), depNodeElem);
   updateSelfDepFlag(&(elem[offset]), depNodeElem, threadid);
 
-
+#if CYCLE_MEASURE
   RDTSC(t2);
   cycle_whenMemoryRead+=(t2-t1);
   last_cycleCnt=t2;
+#endif
 }
 
 

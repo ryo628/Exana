@@ -111,8 +111,8 @@ UINT getFlop(xed_decoded_inst_t* xedd)
      cat==XED_CATEGORY_AVX ||
      cat==XED_CATEGORY_AVX2||
      cat==XED_CATEGORY_AVX2GATHER||
-     cat==XED_CATEGORY_AVX512||
-     cat==XED_CATEGORY_AVX512VBMI
+     cat==XED_CATEGORY_AVX512
+     //cat==XED_CATEGORY_AVX512VBMI
      )
     {   
       for(UINT i=0; i <n_operand; i++) {
@@ -169,8 +169,8 @@ UINT getOps(xed_decoded_inst_t* xedd)
      cat==XED_CATEGORY_AVX ||
      cat==XED_CATEGORY_AVX2||
      cat==XED_CATEGORY_AVX2GATHER||
-     cat==XED_CATEGORY_AVX512||
-     cat==XED_CATEGORY_AVX512VBMI
+     cat==XED_CATEGORY_AVX512
+     //cat==XED_CATEGORY_AVX512VBMI
      )
     {   
       for(UINT i=0; i <n_operand; i++) {
@@ -366,6 +366,228 @@ inline UINT64 getCycleCnt(void){
 }  
 
 
+#if DFG_ANA
+#include "xed-dot.c"
+#include "xed-dot-prep.c"
+#include "xed-examples-util.c"
+
+xed_dot_graph_supp_t* gs = 0;
+
+void xed_dot_graph_add_instruction2(
+    xed_dot_graph_supp_t* gg,
+    xed_decoded_inst_t* xedd,
+    xed_uint64_t runtime_instr_addr, const char *inst_str)
+{
+    /*
+      make a new node
+      
+      for each operand:
+        if read:
+          make edge from src node for that reg to the new node
+      for each operand:
+        if write:
+          install this node as the writer
+
+      what about partial writes?
+      what about register nesting?
+     */
+    char disasm_str[XED_DOT_TMP_BUF_LEN];
+    char* p = 0;
+    size_t alen = 0;
+    int ok;
+    xed_dot_node_t* n = 0;
+    xed_uint32_t remaining_buffer_bytes = XED_DOT_TMP_BUF_LEN;
+    
+    // put addr on separate line in node label
+    ok = sprintf(disasm_str,
+                 XED_FMT_LX "\\n",
+                 runtime_instr_addr);
+
+
+    assert(ok > 0);
+    alen = strlen(disasm_str);
+    p = disasm_str + alen;
+    remaining_buffer_bytes -= XED_CAST(xed_uint32_t, alen);
+
+#if 0
+    ok = xed_format_context(gg->syntax,
+                            xedd, 
+                            p,
+                            remaining_buffer_bytes,
+                            runtime_instr_addr,
+                            caller_data);
+    if (!ok) {
+        (void)xed_strncpy(disasm_str,"???", XED_DOT_TMP_BUF_LEN);
+    }
+#endif 
+    (void)xed_strncpy(p,inst_str, XED_DOT_TMP_BUF_LEN-alen);
+
+    //cout<<"disasm_str "<<disasm_str<<endl;
+    xed_category_enum_t cate=xed_decoded_inst_get_category(xedd);
+
+    xed_dot_node_style_t nodeStyle=NONE;
+    //bool sseAvx=0,flag=0,memOp=0;
+    if(cate==XED_CATEGORY_AVX || cate == XED_CATEGORY_AVX2 ||cate== XED_CATEGORY_SSE ){ 
+      //if(getFlop(xedd)){   
+      if(xed_decoded_inst_number_of_memory_operands(xedd))
+	nodeStyle=NODE_SSE_MEM;//memOp=1;
+      else
+	nodeStyle=NODE_SSEAVX; //sseAvx=1;	
+	//}
+    }  
+    else if(xed_decoded_inst_number_of_memory_operands(xedd))
+      nodeStyle=NODE_MEM;//memOp=1;
+
+    n = xed_dot_node(gg->g, disasm_str, nodeStyle);
+    add_read_operands(gg,xedd,n);
+    add_write_operands(gg,xedd,n);    
+}
+
+void xed_dot_dump(FILE* f, xed_dot_graph_t* g) {
+
+    fprintf(f,"digraph {\n");
+    int sseavx=0, mem=0, none=0, cnt=0;
+    xed_dot_node_t* n = g->nodes;
+    while(n){      
+      fprintf(f, "\"%s\" ",n->name);
+      cnt++;
+      if(n->style==NODE_SSEAVX){
+	sseavx++;
+	//printf("SSEAVX ");
+	//fprintf(f, "[ color=red ];\n");
+	fprintf(f, " [style = filled, fillcolor=hotpink]");
+      }
+      else if(n->style==NODE_MEM){
+	mem++; 
+	//fprintf(f, " [style = filled, fillcolor=lightpink]");
+	fprintf(f, " [shape=box]");
+	//printf("MEM ");
+      }
+      else if(n->style==NODE_SSE_MEM){
+	mem++; sseavx++;
+	//fprintf(f, " [style = filled, fillcolor=lightpink]");
+	fprintf(f, " [shape=box, style = filled, fillcolor=hotpink]");
+	//printf("MEM ");
+      }
+      if(n->style==NONE){
+	none++;
+	//printf("NONE ");
+      }
+      fprintf(f, ";\n");
+      n=n->next;
+    }
+
+    outFileOfProf<<"sseavx:mem:none:cnt   "<<dec<<sseavx<<" "<<mem<<" "<<none<<" "<<cnt<<endl;
+
+    xed_dot_edge_t* p = g->edges;
+    while(p) {
+      //printf("dump %s\n",g->nodes->name);
+        fprintf(f, "\"%s\" -> \"%s\"",
+                p->src->name,
+                p->dst->name);
+        
+        switch(p->style) {
+	case EDGE_SOLID_BLACK:
+	case XED_DOT_EDGE_SOLID:
+	  break; /* nothing required */
+	case XED_DOT_EDGE_DASHED:
+	  fprintf(f, "[ style = dashed ]");
+	  break;
+	case XED_DOT_EDGE_DOTTED:
+	  fprintf(f, "[ style = dotted ]");
+	  break;
+
+	case EDGE_SOLID_RED:
+	  fprintf(f, "[ color=red ]");
+	  break;
+	case EDGE_SOLID_GREEN:
+	  //case NODE_MEM:
+	  fprintf(f, "[ color=green ]");
+	  //fprintf(f, "\"%s\" [shape=box]",  p->dst->name);
+	  break;
+	  //case NODE_SSEAVX:
+	  //fprintf(f, "[ color=red ];\n");
+	  //fprintf(f, "\"%s\" [style = filled, fillcolor=pink]",  p->dst->name);
+	  //break;
+
+          default:
+            break;
+        }
+        
+        fprintf(f, ";\n");
+
+        p = p->next;
+    }
+    fprintf(f,"}\n");
+}
+
+
+
+#if 0
+void xed_dot_graph_init(void)
+{
+  xed_syntax_enum_t syntax = XED_SYNTAX_INTEL;
+  gs = xed_dot_graph_supp_create(syntax);
+  //cout<<"xed_dot_graph_supp_create"<<endl;
+}
+
+void xed_dot_graph_fini(void)
+{
+  if (gs) {
+    FILE *dot_graph_output=fopen("loopDFG.dot","w");
+    xed_dot_graph_dump(dot_graph_output, gs);
+    fclose(dot_graph_output);
+    //cout<<"xed_dot_graph_fini"<<endl;
+    //xed_dot_graph_supp_deallocate(gs);
+  }
+
+
+}
+#endif
+
+void xed_dot_graph_bbl(RTN rtn, int rtnID, int bblID)
+{
+  //xed_decoded_inst_t xedd;
+
+  RTN_Open(rtn);
+
+  INS inst = RTN_InsHead(rtn);
+
+  // string *rtnName=getRtnNameFromInst(inst);
+  while(1){
+
+    if(INS_Address(inst)<=rtnArray[rtnID]->bblArray[bblID].tailAdr && rtnArray[rtnID]->bblArray[bblID].headAdr<=INS_Address(inst)){
+      cout<<"bbl found "<<dec<<bblID<<" "<<hex<<INS_Address(inst)<<endl;
+
+      xed_decoded_inst_t* xedd = INS_XedDec(inst);
+	  
+      int buffer_len=1000;
+      char out_buffer[buffer_len];
+      //xed_format_intel (xedd, out_buffer, buffer_len, INS_Address(inst));
+      xed_format_context(XED_SYNTAX_INTEL, xedd, out_buffer, buffer_len, 0, 0, 0);
+      cout<<"xed_format_intel  "<<out_buffer<<endl;
+
+      xed_dot_graph_add_instruction2(gs, xedd, INS_Address(inst), out_buffer);
+      
+    }
+
+    inst = INS_Next(inst);
+    if(!INS_Valid(inst)){
+      RTN_Close(rtn);
+      rtn=RTN_Next(rtn);
+      if(!RTN_Valid(rtn))break;
+      RTN_Open(rtn);
+      inst=RTN_InsHead(rtn);
+      //cerr<<"go to next rtn's inst"<<endl;
+    }
+    
+  }
+  
+
+  if(RTN_Valid(rtn))  RTN_Close(rtn);	    
+
+}
+#endif
 
 #if 1
 void checkInstStatInRtn(RTN rtn, int *rtnIDval)
@@ -504,6 +726,7 @@ void checkInstStatInRtn(RTN rtn, int *rtnIDval)
 	xed_format_context(XED_SYNTAX_INTEL, xedd, out_buffer, buffer_len, 0, 0, 0);
 	cout<<out_buffer<<endl;
 #endif
+
 #if DFG_ANA
 	if(DFGflag){
 	  //xed_dot_graph_add_instruction(gs, xedd, INS_Address(inst), NULL);
@@ -580,8 +803,6 @@ void checkInstStatInRtn(RTN rtn, int *rtnIDval)
       //xed_dot_graph_supp_deallocate(gs);
     }
 #endif
-
-
 
 #ifdef FUNC_DEBUG_MODE
       // for debug of particular rtn

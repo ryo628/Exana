@@ -425,7 +425,9 @@ void displayNode(struct treeNode *node, int depth, enum printModeT printMode)
   else{
     cnt=node->stat->cycleCnt;
     if(node->statAccum)accumCnt=node->statAccum->accumCycleCnt;
+#if CYCLE_MEASURE
     totalCnt=cycle_application;
+#endif
   }
 
   //cout<<"hoho"<<endl;

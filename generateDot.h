@@ -25,7 +25,7 @@ extern UINT64 numDyMemWrite;
 extern UINT64 numDyDepEdge;
 extern UINT64 numDyRecursion;
 extern UINT64 totalInst;
-extern UINT64 cycle_application;
+//extern UINT64 cycle_application;
 
 
 void makeOrderedListOfTimeCnt(struct treeNode *node, int topN,  printModeT printMode);
@@ -42,6 +42,8 @@ UINT64 calc_accumFlopCnt(struct treeNode *node);
 UINT64 calc_accumMemAccessByte(struct treeNode *node);
 UINT64 calc_accumMemAccessByteR(struct treeNode *node);
 UINT64 calc_accumMemAccessByteW(struct treeNode *node);
+UINT64 calc_accumMemAccessCntR(struct treeNode *node);
+UINT64 calc_accumMemAccessCntW(struct treeNode *node);
 
 
 #endif

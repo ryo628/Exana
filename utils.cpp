@@ -134,7 +134,7 @@ void printFuncInfo(void)
   
 }
 
-
+#if PIN_VERSION_2
 void sys_readelf(void)
 { 
 
@@ -235,7 +235,7 @@ void sys_readelf(void)
   //printFuncInfo();
 
 }
-
+#endif
 
 VOID RtnAna(RTN rtn, VOID *v)
 {
@@ -293,8 +293,9 @@ void printPltInfo(ostream &output)
 
 UINT64 pltInfoNum;
 
-
 struct funcInfoT *pltInfo;
+
+#if PIN_VERSION_2
 void getPltAddress(void)
 { 
 
@@ -385,6 +386,7 @@ void getPltAddress(void)
   //printPltInfo(cout);
 
 }
+#endif
 
 //#include "fork_jit_tool.cpp"
 VOID afterFork_Child(THREADID threadid, const CONTEXT* ctxt, VOID * arg)

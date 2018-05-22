@@ -48,7 +48,8 @@ SA_TOOL_ROOTS :=
 APP_ROOTS :=
 
 # This defines any additional object files that need to be compiled.
-OBJECT_ROOTS := staticAna loopMarkers memAna loopContextProf main print file generateDot instStat MemPatMakeStr idorder MemPat replaceRtn OrderPat OrderPatMakeStr getOptions utils fini cacheSim sampling
+OBJECT_ROOTS := staticAna loopMarkers memAna loopContextProf main print file generateDot instStat MemPatMakeStr idorder MemPat replaceRtn OrderPat OrderPatMakeStr getOptions utils fini cacheSim
+
 
 # csim cCache3l Cache_Set Cache_Parameter Cache_Ctrl Cache_Body Cache_Block CRC_replacement_state 
 
@@ -97,9 +98,12 @@ replaceRtn.o:replaceRtn.cpp replaceRtn.h
 
 staticAna.o : staticAna.cpp staticAna.h loopContextProf.h main.h
 loopMarkers.o : loopMarkers.cpp loopMarkers.h loopContextProf.h main.h
-loopContextProf.o : loopContextProf.cpp staticAna.h loopMarkers.h loopContextProf.h memAna.h main.h cacheSim.h
+loopContextProf.o : loopContextProf.cpp staticAna.h loopMarkers.h loopContextProf.h memAna.h main.h cacheSim.h sampling.h 
+#ExanaDBT.h
 memAna.o : memAna.cpp memAna.h loopContextProf.h staticAna.h main.h
 main.o : loopContextProf.cpp staticAna.h loopMarkers.h loopContextProf.h memAna.h main.h getOptions.h getOptions.cpp utils.h utils.cpp fini.cpp fini.h
+
+# ExanaDBT.o : sampling.h ExanaEBT.h
 
 
 print.o : print.cpp main.h
@@ -109,6 +113,15 @@ main.h : genarateDot.h print.h file.h
 
 instStat.o : instStat.h staticAna.h loopMarkers.h loopContextProf.h memAna.h
 
+#replacement_state.o: CRC_replacement_state.h CRC_replacement_state.cpp CRC_replacement_dip.h CRC_replacement_cache_defs.h
+
+#cCache3l.o: cCache3l.cpp cCache3l.h replacement_state.cpp
+#Cache_Set.o: Cache_Set.cpp Cache_Set.h
+#Cache_Parameter.o: Cache_Parameter.cpp Cache_Parameter.h
+#Cache_Ctrl.o: Cache_Ctrl.cpp Cache_Ctrl.h
+#Cache_Body.o: Cache_Body.cpp Cache_Body.h
+#Cache_Block.o: Cache_Block.cpp Cache_Block.h
+#csim.o: csim.cpp csim.h
 
 
 

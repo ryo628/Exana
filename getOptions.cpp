@@ -17,6 +17,17 @@ All Rights Reserved.
 #include "OrderPatMakeStr.h"
 #include "OrderPat.h"
 
+//#include "ExanaDBT.h"
+
+int l1_cache_size=0;
+int l1_way_num=0;
+int l2_cache_size=0;
+int l2_way_num=0;
+int l3_cache_size=0;
+int l3_way_num=0;
+int block_size=0;
+
+bool samplingFlag=0;
 bool samplingSimFlag=0;
 bool evaluationFlag=0;
 
@@ -123,7 +134,6 @@ INT32 ExanaUsage()
 #ifndef EXANA_R1
 
 
-
 KNOB<string> KnobOption1(KNOB_MODE_WRITEONCE, "pintool",
     "mode", "LCCT", "specify a mode option {plain, CCT, LCCT, LCCT+M, traceConsol, C2Sim} (default, LCCT)");
 KNOB<string> KnobOption2(KNOB_MODE_WRITEONCE, "pintool", "loopID", "-1", "specify a particular loopID if you focus only on it");
@@ -169,6 +179,12 @@ KNOB<string> KnobOption17(KNOB_MODE_WRITEONCE, "pintool",
 
 KNOB<string> KnobOption18(KNOB_MODE_WRITEONCE, "pintool",
     "dirtyPageAna", "0", "Dirty page analysis of every N cycle.  (default, N=0 [Off])");
+
+KNOB<string> KnobOption19(KNOB_MODE_WRITEONCE, "pintool",
+    "outdir", "0", "Specify a directory name created for storing output files.  (default, 0)");
+
+KNOB<string> KnobOption20(KNOB_MODE_WRITEONCE, "pintool",
+    "sampling", "0", "Sampling mode.  Turn on (1) or Turn off (0) (default, off)");
 
 #else
 KNOB<string> KnobOption1(KNOB_MODE_WRITEONCE, "pintool",
@@ -239,11 +255,12 @@ unsigned long long atoullx(const char *num)
 #include <cstdlib>
 #include <cstdio>
 
-#include <sys/stat.h>
+//#include <sys/stat.h>
 //bool DTUNE=0;
 string depOutFileName;
 pid_t thisPid;
 
+//#include <os_return_codes.h>
 int  getOptions(int argc, char *argv[])
 {
   //cout<<"getOptions()"<<endl;
@@ -266,12 +283,26 @@ int  getOptions(int argc, char *argv[])
 	    tp->tm_mon + 1, tp->tm_mday, getpid());
     
     currTimePostfix=currTimeBuf;
-    //cout<<"time = "<<t<<"[s]"<<endl;
-    //cout<<"currTime "<< currTime<<endl;
 
-    if(mkdir(currTimePostfix.c_str(), 0755)!=0){
-      cerr<<"Error: Cannot make directory "<<currTimePostfix<<endl;
-      exit(1);
+    string out19=KnobOption19.Value();
+    if(out19!="0"){
+      currTimePostfix=out19;
+      //cout<<"out19 "<<out19<<endl;
+    }
+
+    OS_FILE_ATTRIBUTES attr;
+    OS_GetFileAttributes(currTimePostfix.c_str(), &attr);
+    if(attr==0){
+      //cout<<"time = "<<t<<"[s]"<<endl;
+      //cout<<"currTime "<< currTime<<endl;
+      int mode=00777;
+      const char *c_currentTimePostfix=currTimePostfix.c_str();
+      OS_RETURN_CODE os_ret=(OS_MkDir(c_currentTimePostfix, mode));
+      //if(mkdir(currTimePostfix.c_str(), 0755)!=0){
+      if(!OS_RETURN_CODE_IS_SUCCESS(os_ret)){
+	cerr<<"Error: Cannot make directory "<<currTimePostfix<<endl;
+	exit(1);
+      }
     }
     thisPid=getpid();
     string outFileOfStaticInfoName=currTimePostfix+"/static.out";
@@ -307,38 +338,28 @@ int  getOptions(int argc, char *argv[])
 
     // for symbolic link
     char filename[1000];
-    char str[1100];
-    snprintf(filename,1000,"inFileName%d.tmp",getpid());
+    //char str[1100];
+    //snprintf(filename,1000,"inFileName%d.tmp",getpid());
     //filename=currTimePostfix+filename;
-    snprintf(str,1100,"readlink -f %s > %s",(*inFileName).c_str(), filename);
-    system(str);
+    //snprintf(str,1100,"readlink -f %s > %s",(*inFileName).c_str(), filename);
+    //system(str);
     //cout<<v<<" "<<str<<endl;
-
-    //OS_Readlink((*inFileName).c_str(), filename, 1000);
-
-    //cout<<"OS_Readlink "<<filename<<endl;
-
-    FILE *fp;
-    if((fp=fopen(filename,"r"))==NULL){
-      fprintf(stderr,"readlink:  error!!!\n");
-      exit(-1);
+    USIZE size=1000;
+    OS_RETURN_CODE ret=OS_ReadLink((*inFileName).c_str(), filename, &size);
+    if(!OS_RETURN_CODE_IS_SUCCESS(ret)){
+      //cout<<"This binary is not symbolic link."<<endl;
+      ;
     }
-    char str2[1000];
-    fgets(str2, 1000, fp);
-    strtok(str2, "\n\0");
-    fclose(fp);
-    string *inFileName2=new string(str2);
-    if(*inFileName!=(*inFileName2)){
+    else{
+      cout<<"OS_ReadLink "<<filename<<endl;
+      string *inFileName2=new string(filename);
       inFileName=inFileName2;
       outFileOfProf<<"symbolic link to "<<*inFileName<<endl;
     }
 
-    sprintf(str,"rm -f %s",filename);
-    system(str);  
-
     outFileOfProf<<"------------------------------------------------------"<<endl;
     
-    bool traceConsolFlag=0;
+    bool C2SimFlag=0;
     string out0=KnobOption1.Value();
 
 
@@ -357,6 +378,8 @@ int  getOptions(int argc, char *argv[])
 
     if(out6=="cycleCnt"){
       cntMode=cycleCnt;
+      cout<<"Currently, the cycleCnt mode is not supported"<<endl;
+      exit(1);
     }
     else if (out6=="instCnt"){
       cntMode=instCnt;
@@ -387,34 +410,33 @@ int  getOptions(int argc, char *argv[])
       //LCCT_M_flag=1;
       profMode=CCT;
     }
-    else if(out0=="traceConsol"){
-#ifdef EXANA_R1
-      outFileOfProf<<"Profiling Mode:  traceConsol is not supported in this version";
-      exit(1);
-#else      
-      //profMode=LCCTM;
-      //mpm=binMemPatMode;
-      //profMode=TRACEONLY;
-      profMode=SAMPLING;
-      traceConsolFlag=1;
+    else if(out0=="dtune"){
+      //LCCT_M_flag=1;
+      //profMode=DTUNE;
+      profMode=DTUNE;
+      //extern void initTraceTable();
+#ifdef _EXANADBT_H_
+      initTraceTable();
 #endif
+      //DTUNE=1;
     }
     else if(out0=="C2Sim"){
       //profMode=LCCTM;
       //mpm=binMemPatMode;
       //profMode=TRACEONLY;
-      profMode=SAMPLING;
+      profMode=TRACEONLY;
       cntMode=cycleCnt;
-      traceConsolFlag=1;
+      C2SimFlag=1;
     }
     else if(out0=="plain"){
       //LCCT_M_flag=1;
       //profMode=DTUNE;
       profMode=PLAIN;
     }
-    else if(out0=="sampling"){
-      profMode=SAMPLING;
-      cntMode=cycleCnt;
+    else if(out0=="static_0"){
+      //LCCT_M_flag=1;
+      //profMode=DTUNE;
+      profMode=STATIC_0;
     }
     else if(out0=="trace"){
       profMode=TRACEONLY;
@@ -430,20 +452,30 @@ int  getOptions(int argc, char *argv[])
       
     }
     else{
-      return ExanaUsage();
+      cout<<"specify a corrent mode option {plain, CCT, LCCT, LCCT+M, C2Sim, interPadd, trace}"<<endl;
+      //return ExanaUsage();
+      exit(1);
     }
     outFileOfProf<<"Profiling Mode:  ";
     if(profMode==CCT) outFileOfProf<<"CCT";
     else if(profMode==LCCT) outFileOfProf<<"LCCT";
     else if(profMode==PLAIN) outFileOfProf<<"plain";
+    else if(profMode==STATIC_0) outFileOfProf<<"static_0";
+    else if(profMode==DTUNE) outFileOfProf<<"dtune";
     else if(profMode==LCCTM) outFileOfProf<<"LCCT+M";
-    else if(profMode==SAMPLING) outFileOfProf<<"sampling";
     else if(profMode==TRACEONLY) outFileOfProf<<"trace";
     else outFileOfProf<<"Other";
 
-    if(profMode!=SAMPLING){
+    string out21=KnobOption20.Value();
+    samplingFlag=atoi(out21.c_str());
+    if(samplingFlag==0){
       evaluationFlag=1;
       samplingSimFlag=1;
+    }
+    else{ 
+      UINT64 t1; RDTSC(t1);
+      prev_cycle_sim_end=t1;
+      exana_start_cycle=t1;
     }
 
     string out3=KnobOption4.Value();
@@ -482,7 +514,7 @@ int  getOptions(int argc, char *argv[])
     string out10=KnobOption10.Value();
     int tmpm=0;
     tmpm=atoi(out10.c_str());
-    //if(tmpm==1 || traceConsolFlag){
+    //if(tmpm==1 || C2SimFlag){
     if(tmpm==1){
     	mpm=binMemPatMode;
     	//profMode=LCCTM;
@@ -498,7 +530,7 @@ int  getOptions(int argc, char *argv[])
     string out11=KnobOption11.Value();
     int tmlm=0;
     tmlm=atoi(out11.c_str());
-    if(tmlm==1 || traceConsolFlag ){
+    if(tmlm==1 || C2SimFlag ){
     	mlm=MallocdMode;
     }
 
@@ -648,7 +680,7 @@ int  getOptions(int argc, char *argv[])
 
     string out14=KnobOption14.Value();
     cacheSimFlag=atoi(out14.c_str());
-    if(cacheSimFlag || traceConsolFlag ){
+    if(cacheSimFlag || C2SimFlag ){
       cacheSimFlag=1;
       //outFile_csimName=g_pwd+"/"+currTimePostfix+"/csim.out";
       outFile_csimName=g_pwd+"/"+currTimePostfix+"/cachesim.dat";
@@ -736,7 +768,8 @@ int  getOptions(int argc, char *argv[])
 	
 	away=buf.substr(buf.find("B",3)+1, buf.find("way",3)-buf.find("B",3)-1);
 	way=atoi(away.c_str());
-	  //cout<<dec<<"size "<<size<<" way "<<way<<endl;
+
+	//cout<<dec<<"size "<<size<<" way "<<way<<endl;
 	if(loc1!=-1){
 	  l1_cache_size=size;
 	  l1_way_num=way;
@@ -760,25 +793,20 @@ int  getOptions(int argc, char *argv[])
 	//cout<<dec<<"size "<<size<<" way "<<way<<endl;
       }
 
-      outFileOfProf<<"CacheSim  Config.  "<<dec<<l1_cache_size<<" "<<l1_way_num<<" "<<l2_cache_size<<" "<<l2_way_num<<" "<<l3_cache_size<<" "<<l3_way_num<<"          block_size="<<block_size<<"   #set "<<dec<<l1_cache_size/l1_way_num/block_size<<" "<<l2_cache_size/l2_way_num/block_size<<" "<<l3_cache_size/l3_way_num/block_size<<endl;
-      if (l1_cache_size==0 || l1_way_num==0 || l2_cache_size==0 || l2_way_num==0 || block_size==0) {
+      outFileOfProf<<"CacheSim  Config.  "<<dec<<l1_cache_size<<" "<<l1_way_num<<" "<<l2_cache_size<<" "<<l2_way_num<<" "<<l3_cache_size<<" "<<l3_way_num<<"          block_size="<<block_size<<" ";
+      if(l3_way_num==0){
+	outFileOfProf<<"   #set "<<dec<<l1_cache_size/l1_way_num/block_size<<" "<<l2_cache_size/l2_way_num/block_size<<endl;
+      }
+      else if (l1_cache_size==0 || l1_way_num==0 || l2_cache_size==0 || l2_way_num==0 || block_size==0) {
 	outFileOfProf<<"Error: L1 and L2 size&way, blocksize must be defined in cache.config file\n";
 	exit(1);
       }
-
+      else{
+	outFileOfProf<<"   #set "<<dec<<l1_cache_size/l1_way_num/block_size<<" "<<l2_cache_size/l2_way_num/block_size<<" "<<l3_cache_size/l3_way_num/block_size<<endl;
+      }
+      //cout<<"hello"<<endl;
       //outFileOfProf<<"CacheSim ---------------------------\n";
 
-#if 0
-      l1_cache_size=32 * KBYTE;
-      l1_way_num=8;
-      
-      l2_cache_size=256 * KBYTE;
-      l2_way_num=8;
-      
-      l3_cache_size=10 * MBYTE;
-      l3_way_num=20;
-      block_size=64;
-#endif
 
 #if 0
 #ifdef CSIM_1
@@ -792,9 +820,8 @@ int  getOptions(int argc, char *argv[])
 #endif
 #endif
       
-      outFileOfProf<<"CacheSim  Config.  "<<dec<<l1_cache_size<<" "<<l1_way_num<<" "<<l2_cache_size<<" "<<l2_way_num<<" "<<l3_cache_size<<" "<<l3_way_num<<"          block_size="<<block_size<<"   #set "<<dec<<l1_cache_size/l1_way_num/block_size<<" "<<l2_cache_size/l2_way_num/block_size<<" "<<l3_cache_size/l3_way_num/block_size<<endl;
-
     }
+
 #endif      
 
 
@@ -813,7 +840,7 @@ int  getOptions(int argc, char *argv[])
     	patIDOutFile.open(patidName.c_str());
     }
 
-
+    //cout<<"getOption ok"<<endl;
     return 0;
 }
 

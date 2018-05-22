@@ -22,15 +22,6 @@ TLS_KEY tls_key;
 
 UINT64 evicted_list_num[clevel_num];
 
-int l1_cache_size=0;
-int l1_way_num=0;
-int l2_cache_size=0;
-int l2_way_num=0;
-int l3_cache_size=0;
-int l3_way_num=0;
-int block_size=0;
-
-
 
 INT32 Usage()
 {
@@ -42,6 +33,15 @@ INT32 Usage()
 //#include <sys/stat.h>
 //bool DTUNE=0;
 //string depOutFileName;
+
+
+/*
+ * Number of OS pages for the buffer
+ */
+//#define NUM_BUF_PAGES 1024
+#define NUM_BUF_PAGES 100
+//#define NUM_BUF_PAGES 1
+
 
 
 extern VOID * BufferFull(BUFFER_ID id, THREADID tid, const CONTEXT *ctxt, VOID *buf, UINT64 numElements, VOID *v);
@@ -94,8 +94,11 @@ int  main(int argc, char *argv[])
 
     last_cycleCnt=getCycleCntStart();
 
+
+#if PIN_VERSION_2
     sys_readelf();
     getPltAddress();
+#endif
 
 #if 1
     TRACE_AddInstrumentFunction(insertMarkerForTrace, 0);    

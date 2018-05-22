@@ -310,7 +310,7 @@ void checkInstInRtn(RTN rtn, int skipCnt)
   headerListStart=NULL;
 
   ADDRINT prevAdr=0;//RTN_Address(rtn);
-  bool flag=0;
+  //bool flag=0;
   for(int skipID=0;skipID<=skipCnt;skipID++){
     RTN_Open(rtn);
     //if(i>0)cerr<<"rtn "<<dec<<i<<" from "<<hex<<RTN_Address(rtn)<<endl;;
@@ -348,7 +348,7 @@ void checkInstInRtn(RTN rtn, int skipCnt)
 
 	if(prevAdr>=INS_Address(inst)){
 
-	  flag=1;
+	  //flag=1;
 	  currInstElem=searchInstElem(currInstElem, INS_Address(inst));
 	  if(currInstElem){
 
@@ -1603,13 +1603,23 @@ void buildDotFileOfCFG_Bbl(void)
 
 }
 
-#include <sys/stat.h>
+//#include <sys/stat.h>
 
 void buildDotFileOfCFG_Bbl(int rtnID)
 {
   ofstream outFileOfCFG;  
   string prefix=g_pwd+"/"+currTimePostfix+"/cfg/";
 
+  OS_FILE_ATTRIBUTES attr;
+  OS_GetFileAttributes(prefix.c_str(), &attr);
+  if(attr==0){
+    int mode=0777;
+    OS_RETURN_CODE os_ret=(OS_MkDir(prefix.c_str(), mode));
+    if(!OS_RETURN_CODE_IS_SUCCESS(os_ret)){
+      cerr<<"Error: Cannot make directory "<<prefix<<endl;
+    }
+  }
+#if 0
   struct stat st;
   int ret=stat(prefix.c_str(), &st);
   if(ret==0);
@@ -1619,6 +1629,7 @@ void buildDotFileOfCFG_Bbl(int rtnID)
       exit(1);
     }
   }
+#endif
 
   string filename= prefix+(*(rtnArray[rtnID]->rtnName)).c_str()+".dot";
 

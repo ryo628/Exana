@@ -36,22 +36,29 @@ void outputNode(struct treeNode *node, FILE *fp)
   //fprintf(stderr, "nodeID %d\n",node->nodeID);
   fwrite(&node->nodeID, sizeof(INT32), 1, fp);
   fwrite(&node->type, sizeof(enum node_type), 1, fp);
-  int size=(*node->rtnName).size();
+  int size=(*node->rtnName).size()+1;
+
   fwrite(&size,sizeof(int),1,fp);
-  const char *c=(*node->rtnName).c_str();
-  //cout<<dec<<size<<" \""<<c<<"\""<<endl;
+  //const char *c=(*node->rtnName).c_str();
+  char *c=(char *)malloc(size);
+  strncpy(c,(*node->rtnName).c_str(),size-1);
+  c[size-1]='\0';
+
+  //cerr<<dec<<size<<" \""<<c<<"\""<<endl;
+
   fwrite(c,sizeof(char),size,fp);
-  char ct='\0';
-  fwrite(&ct,sizeof(char),1,fp);
+  //char ct='\0';
+  //fwrite(&ct,sizeof(char),1,fp);
   fwrite(&node->rtnID, sizeof(int), 1, fp);
   fwrite(&node->loopID, sizeof(int), 1, fp);
   fwrite(&node->rtnTopAddr, sizeof(ADDRINT), 1, fp);
   fwrite(&node->loopType, sizeof(enum nodeTypeE), 1, fp);
 
-  //cerr<<"rtnTopAddr "<<hex<<node->rtnTopAddr<<endl;
+  //cerr<<"rtnID, loopID, rtnTopAddr, loopType "<<" "<<hex<<node->rtnID<<" "<<node->loopID<<" "<<node->rtnTopAddr<<" "<<node->loopType<<endl;
 
   //struct treeNodeStat *stat;
   struct treeNodeStat *s=node->stat;
+
   //fprintf(stderr, "stat %p\n",s);
 
   fwrite(&s->instCnt, sizeof(UINT64), 1, fp);
@@ -61,6 +68,13 @@ void outputNode(struct treeNode *node, FILE *fp)
   fwrite(&s->memReadByte, sizeof(UINT64), 1, fp);
   fwrite(&s->memWrByte, sizeof(UINT64), 1, fp);
   fwrite(&s->n_appearance, sizeof(UINT64), 1, fp);
+
+  //fwrite(&s->memAccessCntR, sizeof(UINT64), 1, fp);
+  //fwrite(&s->memAccessCntW, sizeof(UINT64), 1, fp);
+
+  //cout<<dec<<"memAccessCnt "<<dec<<s->memAccessCntR<<" "<<s->memAccessCntW<<endl;
+
+  //cerr<<"stat: "<<dec<<s->instCnt<<" "<<s->cycleCnt<<" "<<s->memReadByte<<" "<<s->memWrByte<<" "<<s->n_appearance<<endl;
 
   if(workingSetAnaMode==1){
     struct workingSetInfoElem *a=node->workingSetInfo;
@@ -73,11 +87,12 @@ void outputNode(struct treeNode *node, FILE *fp)
     fwrite(&a->maxCntRW, sizeof(UINT64), 1, fp);
     fwrite(&a->minCntRW, sizeof(UINT64), 1, fp);
     fwrite(&a->sumRW, sizeof(UINT64), 1, fp);
+    //cerr<<"workingSetAna:  "<<dec<<a->maxCntR<<" "<<a->minCntR<<" "<<a->sumR<<" ... "<<a->sumRW<<" "<<s->n_appearance<<endl;
   }
-  //cerr<<"stat "<<dec<<s->instCnt<<" "<<s->accumInstCnt<<" "<<s->cycleCnt<<" "<<s->accumCycleCnt<<" "<<s->memReadCnt<<" "<<s->memWrCnt<<" "<<s->n_appearance<<endl;
 
 
-  int nullNode=-1;
+
+  INT32 nullNode=-1;
   if(node->child)
     fwrite(&node->child->nodeID, sizeof(INT32), 1, fp);
   else
@@ -93,9 +108,9 @@ void outputNode(struct treeNode *node, FILE *fp)
   else
     fwrite(&nullNode, sizeof(INT32), 1, fp);
 
-#if 0
-  printNode2(node, cerr);
-  fprintf(stderr, " output id %d %d %d %d\n",node->nodeID,node->child? node->child->nodeID:-1,node->sibling?node->sibling->nodeID:-1,node->parent?node->parent->nodeID:-1);
+#if 1
+  //printNode2(node, cerr);
+  //fprintf(stderr, " output id %d %d %d %d\n",node->nodeID,node->child? node->child->nodeID:-1,node->sibling?node->sibling->nodeID:-1,node->parent?node->parent->nodeID:-1);
 #endif
 
   //struct treeNode *child;
@@ -130,7 +145,9 @@ void outputNode(struct treeNode *node, FILE *fp)
   
   for(UINT i=0;i<depCnt;i++){
     //cerr<<"i="<<dec<<i<<endl;
+
     //cerr<<"depList->node "<<hex<<depList->node<<endl;
+
     int depNodeID= (depList->node? depList->node->nodeID:nullNode);
     //printNode2(depList->node);
     //cerr<<"dep nodeID "<<dec<<depNodeID<<endl;

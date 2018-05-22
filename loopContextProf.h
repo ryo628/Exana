@@ -72,8 +72,8 @@ struct treeNodeStat{
   UINT64 memReadByte;
   UINT64 memWrByte;
   UINT64 n_appearance;
-  int memAccessCntR;
-  int memAccessCntW;
+  UINT64 memAccessCntR;
+  UINT64 memAccessCntW;
   int n_x86, n_vec;
   int n_multiply, n_ops;
 };
@@ -85,6 +85,8 @@ struct treeNodeStatAccum{
   UINT64 accumMemAccessByte;
   UINT64 accumMemAccessByteR;
   UINT64 accumMemAccessByteW;
+  UINT64 accumMemAccessCntR;
+  UINT64 accumMemAccessCntW;
 };
 
 

@@ -10,6 +10,8 @@ All Rights Reserved.
 #include "loopContextProf.h"
 #include "getOptions.h"
 
+bool physicalAdrOn=1;
+
 void checkMemoryUsage();
 
 extern bool evaluationFlag;
@@ -23,27 +25,57 @@ extern  string *inFileName;
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/stat.h>
+//#include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include<math.h>
 #include <ctype.h>
 
-extern UINT64 start_cycle_sim;
-extern UINT64 prev_cycle_sim_end;
-extern UINT64 t_period_sim;
-extern UINT64 t_warmup;
-extern UINT64 t_evaluation;
-extern bool samplingSimFlag;
-extern bool evaluationFlag;
 UINT64 n_memref=0;
 UINT64 prev_memref=0;
 
 UINT64 cycle_whenCacheSim=0;
-extern UINT64 cycle_application;
+//extern UINT64 cycle_application;
 
 UINT64 n_cacheSim_eval=0;
 extern PIN_LOCK thread_lock;
+
+
+
+
+UINT64 exana_start_cycle=0;
+UINT64 prev_cycle_sim_end=0;
+UINT64 t_period_sim=4000000000;
+UINT64 t_warmup    =100000000;
+UINT64 t_evaluation=100000000;
+
+//UINT64 t_period_sim=4000000000;
+//UINT64 t_warmup    =100000000;
+//UINT64 t_evaluation=500000000;
+
+UINT64 flush_interval=4000000000;
+
+void setFlushFlag()
+{
+  for(UINT i=0;i<tid_list.size();i++){
+    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, tid_list[i] ) );
+    tls->flushFlag=1;
+    //cout<<"flushFlag thread="<<dec<< tid_list[i]<<endl;
+  }
+}
+
+void tls_flushCache()
+{
+  for(UINT i=0;i<tid_list.size();i++){
+    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, tid_list[i] ) );
+    flushCache(&tls->l1c);
+    flushCache(&tls->l2c);
+    flushCache(&tls->l3c);
+    cout<<"flushCache thread="<<dec<< tid_list[i]<<endl;
+  }
+}
+
+void flushPfnInHash();
 
 VOID * BufferFull(BUFFER_ID id, THREADID tid, const CONTEXT *ctxt, VOID *buf,
                   UINT64 numElements, VOID *v)
@@ -51,67 +83,128 @@ VOID * BufferFull(BUFFER_ID id, THREADID tid, const CONTEXT *ctxt, VOID *buf,
   //int cpu=sched_getcpu();
   //cout<<"BufferFull cpu "<<cpu<<" tid="<<tid<<" IsAppThread?="<<PIN_IsApplicationThread() <<endl;
 
-  UINT64 t1,t2;    
-  //t1=getCycleCnt();
-  RDTSC(t1);
-  //cout<<"DumpBuffer "<<tid<<" "<<numElements<<endl; 
-  //cout.flush();
 
-  t2= t1-last_cycleCnt;
-  cycle_application+= t2;
 
   //cout<<"BufferFull:  thread id = "<<dec<<tid<<" Cycle="<<t1<<"  buf="<<hex<<buf<<endl;
 
-  if(profMode==PLAIN || profMode==STATIC_0) return NULL;
+  //if(profMode==PLAIN || profMode==STATIC_0) return NULL;
+  if(profMode!=LCCTM && cacheSimFlag!=1) return NULL;
+
+
+  UINT64 t1;
+#if CYCLE_MEASURE
+  RDTSC(t1);
+  //t1=getCycleCnt();
+  //cout<<"DumpBuffer "<<tid<<" "<<numElements<<endl; 
+  //cout.flush();
+
+  UINT64 t2= t1-last_cycleCnt;
+  cycle_application+= t2;
+#endif
 
   //cout<<"BufferFull "<<endl;
 
 #if 1
     struct MEMREF * reference=(struct MEMREF*)buf;
-    bool flag=0;
+    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, tid ) );
+    //bool flag=0;
     PIN_GetLock(&thread_lock, tid+1);
 
-    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, tid ) );
 
-    if(profMode==SAMPLING){
 
     n_memref+=numElements;
-    //if(t1 > start_cycle_sim+t_warmup+t_evaluation && samplingSimFlag){
-    UINT64 t_val =(n_memref - prev_memref)*3*tid_list.size();
-    if( t_val > t_warmup+t_evaluation && samplingSimFlag){
-      flag=1;
-      samplingSimFlag=0;
-      evaluationFlag=0;
-      //cout<<"samplingSimFlag=0  at "<<dec<<tid<<"   n_memref="<<n_memref<<endl;
-      //checkMemoryUsage();
+    UINT64 t_val =(n_memref - prev_memref)*INS_MIX_MEM_RATIO;//*tid_list.size();
 
-      prev_memref=n_memref;
+    if(samplingFlag){
 
-      if(flag){
-	//flushAllCache();
+      //cout<<"t_val, n_memref, prev_memref  "<<scientific<< setprecision(2) <<(double)t_val<<" "<<(double)n_memref<<" "<<(double)prev_memref<<"  "<<(double)t_period_sim<<"  tid="<<tid<<" numElements="<<dec<<numElements<<endl;
+
+      ///*
+#ifndef TRACE_SAMPLING
+      //
+      // openning the warmup phase
+      //      
+      if( t_val > t_period_sim && samplingSimFlag==0){
+	samplingSimFlag=1;
+	cout<<"warmup phase:  t_val, n_memref, prev_memref  "<<scientific<< setprecision(2) <<(double)t_val<<" "<<(double)n_memref*INS_MIX_MEM_RATIO<<" "<<(double)prev_memref*INS_MIX_MEM_RATIO<<"  "<<tid<<endl;
+
+
+	prev_memref=n_memref;
+      
       }
-      RDTSC(t2);
-      prev_cycle_sim_end=t2;
-    }
-    if(t_val > t_warmup && evaluationFlag==0 && samplingSimFlag){
+      else 
+#endif
+	//      */
 
-      evaluationFlag=1;
-      n_cacheSim_eval++;
-      //cout<<"evaluationFlag=1  at tid="<<dec<<tid<<"   n_memref="<<n_memref<<endl;   checkMemoryUsage();    
+
+      //
+      // shift to evaluation phase from warmup
+      //      
+      if(t_val > t_warmup && evaluationFlag==0 && samplingSimFlag){
+	evaluationFlag=1;
+	n_cacheSim_eval++;
+	RDTSC(t1);
+
+	cout<<"evaluation phase:  "<<scientific<< setprecision(2) <<(double)t_val<<"   tid="<<tid<<"  sim cycle: "<<scientific<<setprecision(2)<<(float)t1-exana_start_cycle<<"  numThread="<<numThread<<endl;
+	//cout<<"evaluationFlag=1  at tid="<<dec<<tid<<"   n_memref="<<n_memref<<endl;   checkMemoryUsage();    
+	prev_memref=n_memref;
+
+      }
+
+      //
+      // finishing the evaluation phase
+      //
+      else if( t_val > t_evaluation && samplingSimFlag && evaluationFlag){
+
+	prev_memref=n_memref;
+
+	setFlushFlag();
+
+	RDTSC(t1);
+	prev_cycle_sim_end=t1;
+	evaluationFlag=0;
+	samplingSimFlag=0;
+
+	cout<<"forward phase:  t_val "<<scientific<< setprecision(2) <<(double)t_val<<"  sim cycle: "<<scientific<<setprecision(2)<<(float)t1-exana_start_cycle<<"  numThread="<<numThread<<endl;
+
+
+	}
+
+
+    }
+    else{
+      //flushCache here
+#if 0      
+      if( t_val > flush_interval){
+
+	cout<<"flush:  t_val, n_memref, prev_memref  "<<scientific<< setprecision(2) <<(double)t_val<<" "<<(double)n_memref*INS_MIX_MEM_RATIO<<" "<<(double)prev_memref*INS_MIX_MEM_RATIO<<"  "<<(double)t_period_sim<<endl;
+
+	//setFlushFlag();
+	tls_flushCache();
+	//flushPfnInHash();
+
+	n_memref=0;
+	prev_memref=n_memref;
+      
+      }
+#endif
+
     }
 
     if(tls->flushFlag){
-      //cout<<"flushFlag:  flushCache at tid="<<dec<<tid<<"   n_memref="<<n_memref<<endl;  checkMemoryUsage();
-
+      //cout<<"flushFlag:  flushCache at tid="<<dec<<tid<<"   n_memref="<<n_memref<<" numThread="<<numThread<<endl;  //checkMemoryUsage();
+      
       flushCache(&tls->l1c);
       flushCache(&tls->l2c);
       flushCache(&tls->l3c);
       tls->flushFlag=0;
     }
 
-    }
 
     PIN_ReleaseLock(&thread_lock);
+
+
+
 
     //cout<<"lock release "<<endl;
 
@@ -119,13 +212,16 @@ VOID * BufferFull(BUFFER_ID id, THREADID tid, const CONTEXT *ctxt, VOID *buf,
     //cout<<"DumpBuffer "<<dec<<numElements<<endl;
     tls->DumpBuffer( reference, numElements, tid );
 
+    //PIN_ReleaseLock(&thread_lock);
 
     //ThreadLocalData::DumpBuffer( reference, numElements, tid );
 #endif
 
+#if CYCLE_MEASURE
     RDTSC(t2);
     cycle_whenCacheSim+=(t2-t1);
     last_cycleCnt=t2;
+#endif
 
     //cout<<"BufferFull OK"<<endl;
     //checkMemoryUsage();
@@ -134,138 +230,6 @@ VOID * BufferFull(BUFFER_ID id, THREADID tid, const CONTEXT *ctxt, VOID *buf,
 }
 
 
-extern pid_t thisPid;
-
-struct pagemapListT {
-  unsigned long long pageID;
-  unsigned long long pfn;
-  struct pagemapListT *next;  
-  
-};
-static struct pagemapListT *pagemapList[HASH_TABLE_SIZE];
-
-struct pagemapListT* checkPfnInHash(ADDRINT pageID)
-{
-
-  uint64_t hashval=pageID%HASH_TABLE_SIZE;
-  struct pagemapListT *ptr=pagemapList[hashval];
-
-  while(ptr){
-    if(ptr->pageID==pageID){
-      //cout<<"found"<<endl;
-      return ptr;
-    }
-    ptr=ptr->next;
-  }
-  return NULL;
-}
-
-UINT64 countPfnInHash()
-{
-  UINT64 cnt=0;
-  for(UINT64 i=0;i<HASH_TABLE_SIZE;i++){  
-    struct pagemapListT *ptr=pagemapList[i];
-    while(ptr){
-      cnt++;
-      ptr=ptr->next;
-    }
-    //cout<<"i cnt="<<dec<<i<<" "<<cnt<<endl;
-  }
-  return cnt;
-}
-
-struct pagemapListT* insertNewPfnInHash(ADDRINT pageID,ADDRINT pfn)
-{
-
-  uint64_t hashval=pageID%HASH_TABLE_SIZE;
-  struct pagemapListT *prev=pagemapList[hashval];
-
-  pagemapList[hashval]=(struct pagemapListT *) malloc(sizeof(struct pagemapListT));
-  pagemapList[hashval]->pageID=pageID;
-  pagemapList[hashval]->pfn=pfn;
-  pagemapList[hashval]->next=prev;
-
-  //cout<<"hashval cnt="<<dec<<hashval<<" "<<pCnt<<endl;
-
-  return pagemapList[hashval];
-}
-
-
-unsigned long long lookup_pagemap(unsigned long long vaddr)
-{
-  unsigned long long page_size=4096;
-  unsigned long long pfn;   // page frame number 
-  unsigned long long pageID;
-  unsigned long long page_mask;
-  int page_shift;
-  unsigned long long paddr;
-
-  //int pid=getpid();
-  //int pid=PIN_GetPid();
-  int pid=thisPid;
-  pageID = vaddr / page_size;
-  page_mask = vaddr % page_size;
-  page_shift = log2(page_size);
-
-  //cout<<"loopup_pagemap"<<endl;
-
-  struct pagemapListT *pfnPtr=checkPfnInHash(pageID);
-  if(pfnPtr){
-    paddr = ( pfnPtr->pfn << page_shift) | page_mask;
-    //cout<<"hit pfn "<<hex<<pfnPtr->pfn<<" "<<paddr<<endl;
-    return paddr;
-  }
-
-  char path[128]="";
-  sprintf(path, "/proc/%d/pagemap", pid);
-
-  int pagemap = open(path, O_RDONLY);
-
-  if(pagemap == -1){
-    printf("Failed to open %s\n", path);
-    //char str[128]="/bin/ls /proc/ > tmp";
-    //system(str);
-    exit(0);
-  }
-
-  /* seek to the index of this page */
-  /* This is the actually offset for this page is vpageindex * 8, 
-   * since each page has 64 bits or 8 bytes
-   */	
-
-
-  long long ret_offset = lseek64(pagemap, pageID*8, SEEK_SET);
-	if(ret_offset == -1){
-	  printf("Failed to seek to %lld in file %s\n", pageID*8, path);
-	  exit(1);
-	}
-
-	unsigned long long encoded_page_info;
-	//unsigned long long physical_addr;
-
-	/* read the virtual page info out */
-	long long bytes_read = read(pagemap, &(encoded_page_info), 8);
-	if(bytes_read == -1 || bytes_read != 8){
-	  //printf("Failed to read file %s  size=%lld  vaddr=%llx pageID=%llx\n", path, bytes_read, vaddr, pageID);
-	  //exit(1);
-	  close(pagemap);
-	  return vaddr;
-	}
-	close(pagemap);
-
-	/* process virtual page info */
-	pfn = encoded_page_info & 0x7fffffffffffff;
-
-	// page_shift = (encoded_page_info >> 55) & 0x3f;  before Linux 3.11
-	paddr = (pfn << page_shift) | page_mask;
-
-	insertNewPfnInHash(pageID, pfn);
-	//cout<<"insertNewPfn "<<hex<<pageID<<" "<<pfn<<endl;
-    
-
-	//printf("paddr = 0x%llx   pfn, page_shift = %llx %d  pid=%d  vaddr=%llx pageID=%llx\n",paddr, pfn, page_shift, pid, vaddr, pageID);
-	return paddr;
-}
 
 
 ThreadLocalData::ThreadLocalData(THREADID tid)
@@ -276,7 +240,7 @@ ThreadLocalData::ThreadLocalData(THREADID tid)
 
   if(cacheSimFlag){
     csim_init(l1_cache_size, l1_way_num, l2_cache_size, l2_way_num, l3_cache_size, l3_way_num, block_size);
-    L1access=0,L1miss=0,L2miss=0,L3miss=0;
+    L1access=0,L1miss=0,L2miss=0,L3miss=0;memReadCnt=0;memWriteCnt=0;
   }
 
   if(workingSetAnaFlag || profMode==LCCTM){  
@@ -314,9 +278,13 @@ void ThreadLocalData::DumpBuffer( struct MEMREF * reference, UINT64 numElements,
 
   for(UINT64 i=0; i<numElements; i++, reference++)
     {
+
+      if(reference->rw==memRead) memReadCnt++;
+      else memWriteCnt++;
+
       cachesim(reference->ea, reference->size, reference->pc, tid);
       //cachesim(reference, tid);
-
+	
 #if 0
       if(profMode==LCCTM){
 	if(reference->rw==memRead)
@@ -336,6 +304,205 @@ void ThreadLocalData::DumpBuffer( struct MEMREF * reference, UINT64 numElements,
   //cout.flush();
 }
 
+
+extern pid_t thisPid;
+
+struct pagemapListT* ThreadLocalData::checkPfnInHash(ADDRINT pageID)
+{
+
+  uint64_t hashval=pageID%HASH_TABLE_SIZE;
+  struct pagemapListT *ptr=pagemapList[hashval];
+
+  while(ptr){
+    if(ptr->pageID==pageID){
+      //cout<<"found"<<endl;
+      return ptr;
+    }
+    ptr=ptr->next;
+  }
+  return NULL;
+}
+
+UINT64 ThreadLocalData::countPfnInHash()
+{
+  UINT64 cnt=0;
+  for(UINT64 i=0;i<HASH_TABLE_SIZE;i++){  
+    struct pagemapListT *ptr=pagemapList[i];
+    while(ptr){
+      cnt++;
+      ptr=ptr->next;
+    }
+    //cout<<"i cnt="<<dec<<i<<" "<<cnt<<endl;
+  }
+  return cnt;
+}
+
+void ThreadLocalData::flushPfnInHash()
+{
+
+  for(UINT64 i=0;i<HASH_TABLE_SIZE;i++){  
+    struct pagemapListT *ptr=pagemapList[i];
+    while(ptr){
+      struct pagemapListT *prev=ptr;
+      ptr=ptr->next;
+      free(prev);
+    }
+    //cout<<"i cnt="<<dec<<i<<" "<<cnt<<endl;
+  }
+  memset(basePagemapList,0,sizeof(struct pagemapListT)*HASH_TABLE_SIZE);
+  return;
+}
+
+struct pagemapListT* ThreadLocalData::insertNewPfnInHash(ADDRINT pageID,ADDRINT pfn)
+{
+
+  uint64_t hashval=pageID%HASH_TABLE_SIZE;
+  struct pagemapListT *prev=pagemapList[hashval];
+
+
+#if 1
+    UINT64 offset=numPagemapList%HASH_TABLE_SIZE;
+
+    if(offset==0){
+      //c->baseLtwet=(struct lastTimeWhoEvictT**) malloc(sizeof(struct lastTimeWhoEvictT)*MALLOC_NUM);
+      cout<<"new PagemapList"<<endl;
+      basePagemapList=new struct pagemapListT [HASH_TABLE_SIZE];
+      memset(basePagemapList,0,sizeof(struct pagemapListT)*HASH_TABLE_SIZE);
+    }
+    numPagemapList++;
+    pagemapList[hashval]=&basePagemapList[offset];
+
+#else
+    pagemapList[hashval]=(struct pagemapListT *) malloc(sizeof(struct pagemapListT));
+#endif
+
+
+  //cout<<"malloc @ insertNewPfnInHash() pageID "<<hex<<pageID<<endl;
+
+  pagemapList[hashval]->pageID=pageID;
+  pagemapList[hashval]->pfn=pfn;
+  pagemapList[hashval]->next=prev;
+
+  //cout<<"hashval cnt="<<countPfnInHash()<<endl;
+
+  return pagemapList[hashval];
+}
+
+// Thread-safe version
+void mt_strerror_r( int err )
+{
+  char buff[256];
+  
+  if( strerror_r( err, buff, 256 ) == 0 ) {
+    printf("Error: %s\n @opening pagemap", buff );
+    printf("  In Linux kernel 4.0 or 4.1, file opens by unprivileged users fail with -EPERM error code.\n");
+  }
+}
+
+UINT64 ThreadLocalData::lookup_pagemap(UINT64 vaddr)
+{
+  UINT64 page_size=4096;  // granularity for analysis
+  UINT64 pfn;   // page frame number 
+  UINT64 pageID;
+  UINT64 page_mask;
+  int page_shift;
+  UINT64 paddr;
+
+  //int pid=getpid();
+  //int pid=PIN_GetPid();
+  int pid=thisPid;
+  pageID = vaddr / page_size;
+  page_mask = vaddr % page_size;
+  page_shift = log2(page_size);
+
+  //cout<<"loopup_pagemap"<<endl;
+
+  struct pagemapListT *pfnPtr=checkPfnInHash(pageID);
+  if(pfnPtr){
+    paddr = ( pfnPtr->pfn << page_shift) | page_mask;
+    //cout<<"hit pfn "<<hex<<pfnPtr->pfn<<" "<<paddr<<endl;
+    return paddr;
+  }
+
+  char path[128]="";
+  sprintf(path, "/proc/%d/pagemap", pid);
+
+  int pagemap = open(path, O_RDONLY);
+
+  //if(pagemap == -1){
+  if(pagemap < 0){
+    //printf("Failed to open %s\n", path);
+    //mt_strerror_r(pagemap);
+    //char str[128]="/bin/ls /proc/ > tmp";
+    //system(str);
+    char buff[256];
+  
+    if( strerror_r( pagemap, buff, 256 ) == 0 ) {
+      char c[300];
+      snprintf((char *) c,300,"Warning: %s  @opening pagemap\n", buff );
+      outFileOfProf<<c<<"  In Linux kernel 4.0 or 4.1, file opens by unprivileged users fail with -EPERM error code.\n";
+    }
+    if(pagemap==EPERM){
+      physicalAdrOn=0;
+      return vaddr;    
+    }
+    else{
+      printf("Error: %s @opening pagemap \n", buff );
+      exit(0);
+    }
+  }
+
+  //printf("pagemap %d\n", pagemap);
+
+  /* seek to the index of this page */
+  /* This is the actually offset for this page is pageID * 8, 
+   * since the width of pageID is 8 bytes (64 bit).
+   */	
+
+
+  long long ret_offset = lseek64(pagemap, pageID*8, SEEK_SET);
+
+  if(ret_offset == -1){
+    printf("Failed to seek to %llu in file %s\n", (long long unsigned int)pageID*8, path);
+    exit(1);
+  }
+
+  UINT64 encoded_page_info;
+  //UINT64 physical_addr;
+
+  /* read the virtual page info out */
+  long long bytes_read = read(pagemap, &(encoded_page_info), 8);
+  if(bytes_read == -1 || bytes_read != 8){
+    //printf("Failed to read file %s  size=%lld  vaddr=%llx pageID=%llx\n", path, bytes_read, vaddr, pageID);
+    //exit(1);
+    close(pagemap);
+    return vaddr;
+  }
+  close(pagemap);
+
+
+  /* process virtual page info */
+  pfn = encoded_page_info & 0x7fffffffffffff;
+
+  if(pfn==0){
+    char c[300];
+    snprintf((char *) c,300,"Error: pfn is %lx \n", pfn );
+    outFileOfProf<<c<<"  In Linux kernel later than 4.2, PFN field is zeroed if the user does not have CAP_SYS_ADMIN permission (root).\n";
+    physicalAdrOn=0;
+    return vaddr;    
+  }
+
+  // page_shift = (encoded_page_info >> 55) & 0x3f;  before Linux 3.11
+  paddr = (pfn << page_shift) | page_mask;
+
+  insertNewPfnInHash(pageID, pfn);
+  //cout<<"insertNewPfn "<<hex<<pageID<<" "<<pfn<<endl;
+    
+
+  //printf("paddr = 0x%llx   pfn, page_shift = %llx %d  pid=%d  vaddr=%llx pageID=%llx\n",paddr, pfn, page_shift, pid, vaddr, pageID);
+  return paddr;
+
+}
 
 
 
@@ -407,6 +574,7 @@ struct CacheAccessInfoT* ThreadLocalData::findInstInHash(ADDRINT instAdr, struct
     ptr=ptr->next;
   }
   if(found==0){
+    //static UINT64 cnt=0;  cout<<"add byInstAdr  addr[] "<<++cnt<<endl;
     struct CacheAccessInfoT *prev=addr[hashval];
     //addr[hashval]=new struct CacheAccessInfoT;
     addr[hashval]=(struct CacheAccessInfoT*) malloc(sizeof(struct CacheAccessInfoT));
@@ -706,6 +874,7 @@ void ThreadLocalData::updateMissOriginPCInHash(struct cacheT *c, ADDRINT key, AD
 
     if(offset==0){
       //c->baseLtwet=(struct lastTimeWhoEvictT**) malloc(sizeof(struct lastTimeWhoEvictT)*MALLOC_NUM);
+      cout<<"new LTWET"<<endl;
       c->baseLtwet=new struct lastTimeWhoEvictT [MALLOC_NUM];
     }
 
@@ -820,12 +989,12 @@ FAentryT* checkTagInHash(struct cacheT *c, uint64_t tag)
   uint64_t hashval=tag%HASH_TABLE_SIZE;
   //std::cout << "UpdateFullAssoc curr=" <<hex<< tag<<";  ";
   struct FAentryT *ptr=c->FAhash[hashval];
-  struct FAentryT *lastPtr=NULL;
+  //struct FAentryT *lastPtr=NULL;
   while(ptr){
     if(ptr->tag==tag){
       return ptr;
     }
-    lastPtr=ptr;
+    //lastPtr=ptr;
     ptr=ptr->next;
   }
 
@@ -1027,32 +1196,32 @@ int ThreadLocalData::UpdateFullAssoc(struct cacheT *c, uint64_t tag)
     fullAssocListErase(c, it);
     fullAssocListPush_front(c, tag);
 #else
-  listElem *prev=it->prev;
-  listElem *next=it->next;
-
-  if(c->fullAssocList==NULL){
-    fullAssocListPush_front(c, tag);
-
-  }
-  else if(prev){  
-    prev->next=next;
-    it->next=c->fullAssocList;
-    c->fullAssocList->prev=it;
-    c->fullAssocList=it;
-
-    if(it==c->fullAssocListTail){
-      //cout<<"tail is erased"<<endl;
-      c->fullAssocListTail=prev;
-    }
-    if(next)
-      next->prev=prev;
+    listElem *prev=it->prev;
+    listElem *next=it->next;
     
-    it->prev=NULL;
-    it->tag=tag;
-  }
-  else{
-    // hit at the first element
-  }
+    if(c->fullAssocList==NULL){
+      fullAssocListPush_front(c, tag);
+      
+    }
+    else if(prev){  
+      prev->next=next;
+      it->next=c->fullAssocList;
+      c->fullAssocList->prev=it;
+      c->fullAssocList=it;
+
+      if(it==c->fullAssocListTail){
+	//cout<<"tail is erased"<<endl;
+	c->fullAssocListTail=prev;
+      }
+      if(next)
+	next->prev=prev;
+    
+      it->prev=NULL;
+      it->tag=tag;
+    }
+    else{
+      // hit at the first element
+    }
 #endif
 
     ptr->it=c->fullAssocList;
@@ -1222,7 +1391,7 @@ bool checkAndUpdate_LRU_history(struct cacheT *c, uint64_t set, uint64_t tag, ui
 
 
 
-void init_cache(struct cacheT *c, UINT64 size, UINT64 assoc, UINT64 line_size, enum clevel cacheLevel)
+void ThreadLocalData::init_cache(struct cacheT *c, UINT64 size, UINT64 assoc, UINT64 line_size, enum clevel cacheLevel)
 {
 
   //cout<<"init_cache() "<<dec<<size<<" "<<assoc<<" "<<line_size<<" "<<cacheLevel<<endl;
@@ -1258,7 +1427,14 @@ void init_cache(struct cacheT *c, UINT64 size, UINT64 assoc, UINT64 line_size, e
     c->fullAssocListBase=NULL;
   }
 
-#if 1
+
+  if(physicalAdrOn){
+    pagemapList=(pagemapListT **) malloc(sizeof(pagemapListT *) * HASH_TABLE_SIZE);
+    memset(pagemapList, 0, sizeof(pagemapListT *) * HASH_TABLE_SIZE);
+    numPagemapList=0;
+    basePagemapList=NULL;
+
+  }
   if(missOriginOn){
     //FAentryT *FAhash[HASH_TABLE_SIZE];
     c->ltwet=(lastTimeWhoEvictT **) malloc(sizeof(lastTimeWhoEvictT *) * HASH_TABLE_SIZE);
@@ -1267,7 +1443,6 @@ void init_cache(struct cacheT *c, UINT64 size, UINT64 assoc, UINT64 line_size, e
     c->baseLtwet=NULL;
 
   }
-#endif
     
   c->conflict_agree=c->conflict_disagree=c->capacity_agree=c->capacity_disagree=0;
   c->FA_hitCnt=c->FA_compulsoryCnt=c->FA_capacityCnt=0;
@@ -1311,7 +1486,8 @@ void flushCache(struct cacheT *c)
 
   if(FAsimOn){
     memset(c->FAhash, 0, sizeof(FAentryT *) * HASH_TABLE_SIZE);
-    //flushFAHash(c);
+
+    flushFAHash(c);
 
     //cout<<"flush cache"<<endl;
     freeAllFullAssocList(c);
@@ -1846,10 +2022,7 @@ bool ThreadLocalData::isCacheMiss(struct cacheT *c, ADDRINT adr, INT32 size,  st
   // for phisical tag PT
   UINT64 tag1=phyAdr >> (c->line_size_bits);
 
-  //UINT64 line1, line2, set1;
-  UINT64 line1=0;
-  UINT64 line2=0;
-  UINT64 set1=0;
+  UINT64 line1=0, line2=0, set1=0;
 
 #if 1  
   if(c->cacheLevel==clevel1){
@@ -1924,6 +2097,12 @@ bool ThreadLocalData::isCacheMiss(struct cacheT *c, ADDRINT adr, INT32 size,  st
 //void cachesim(struct MEMREF *ref, THREADID threadid)
 void ThreadLocalData::cachesim(ADDRINT adr,  INT32 size, ADDRINT pc, THREADID threadid)
 {
+
+#ifndef TRACE_SAMPLING
+  if(samplingFlag && samplingSimFlag==0)
+    return;
+#endif
+
 #if 0
   ADDRINT adr=ref->ea;
   INT32 size=ref->size;
@@ -2032,7 +2211,7 @@ void printCacheStat(void)
   outFileOfProf << "  L2: " << setw(3) << l2_cache_size/KBYTE << " KB, " << setw(2) << l2_way_num << " way" <<endl;
   outFileOfProf << "  L3: " << setw(3) << l3_cache_size/MBYTE << " MB, " << setw(2) << l3_way_num << " way" <<endl;
 
-  UINT64 L1access=0,L1miss=0,L2miss=0,L3miss=0;
+  UINT64 L1access=0,L1miss=0,L2miss=0,L3miss=0,memReadCnt=0, memWriteCnt=0;
   UINT64 l1c_n_pseudo_conflict=0,l1c_n_conflict=0,l2c_n_pseudo_conflict=0,l2c_n_conflict=0,l3c_n_pseudo_conflict=0,l3c_n_conflict=0; 
   UINT64 l1c_n_invalidate=0, l2c_n_invalidate=0;
   UINT64 l1c_n_invalidateFA=0, l2c_n_invalidateFA=0;
@@ -2047,6 +2226,8 @@ void printCacheStat(void)
     L1miss+=tls->L1miss;
     L2miss+=tls->L2miss;
     L3miss+=tls->L3miss;
+    memReadCnt+=tls->memReadCnt;
+    memWriteCnt+=tls->memWriteCnt;
     l1c_n_pseudo_conflict+=tls->l1c.n_pseudo_conflict;
     l2c_n_pseudo_conflict+=tls->l2c.n_pseudo_conflict;
     l3c_n_pseudo_conflict+=tls->l3c.n_pseudo_conflict;
@@ -2069,8 +2250,9 @@ void printCacheStat(void)
 
   }
 
+  outFileOfProf << "\n  Mem_ref       "<< setw(10) << fixed << L1access << "   R="<< scientific << setprecision(2) << (double) memReadCnt<<"  W="<<scientific << setprecision(2) << (double)  memWriteCnt<< setw(6) << fixed <<  setprecision(2)<< (double) memReadCnt/memWriteCnt <<":1 \n"<< endl;
+
   outFileOfProf << "                Cache_miss_(per_memRef) " << endl;
-  outFileOfProf << "  Mem_ref       "<< setw(10) << fixed << L1access << endl;
   outFileOfProf << "  L1_cache_miss "<< setw(10) << fixed << L1miss << "  "<<setw(10) << fixed << setprecision(2) << (double)L1miss/L1access*100<<"%"<<endl;
   outFileOfProf << "  L2_cache_miss "<< setw(10) << fixed << L2miss << "  "<<setw(10) << fixed << setprecision(2) << (double)L2miss/L1access*100<<"% "<<endl;
   outFileOfProf << "  L3_cache_miss "<< setw(10) << fixed << L3miss << "  "<<setw(10) << fixed << setprecision(2) << (double)L3miss/L1access*100<<"% "<<endl;
@@ -2083,6 +2265,8 @@ void printCacheStat(void)
     outFileOfProf << "          L3    "<< setw(10) << fixed << setprecision(2) << (double)L3miss/L2miss*100   <<"%"<<endl;
 
   }
+
+  outFileOfProf << "\n  Cache_access L1/L2/L3   " << setw(10) << fixed << setprecision(2) << (double)L1access <<"  "<< (double)L1miss<< "  "<<L2miss<<"\n"<<endl;
     
   if (pseudoFAsimOn || FAsimOn) {
     outFileOfProf << "  Conflict_miss_per_miss_in_each_level: ";
@@ -2129,8 +2313,13 @@ void printCacheStat(void)
     outFileOfProf << endl;
 
   }
-  if(physicalAdrOn){
-    UINT64 pageCnt=countPfnInHash();
+  if(physicalAdrOn){  
+    UINT64 pageCnt=0;
+    for(UINT i=0;i<tid_list.size();i++){
+      ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, tid_list[i] ) );
+
+      pageCnt+=tls->countPfnInHash();
+    }
     outFileOfProf<<"Working set:  "<<dec<<pageCnt*4<< " KB  ("<<pageCnt<<" pages in 4KB)"<<endl;
     outFileOfProf << endl;
   }

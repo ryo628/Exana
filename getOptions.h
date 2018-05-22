@@ -64,7 +64,7 @@ extern UINT64 numThread;
 //extern bool LCCT_M_flag;
 extern UINT64 DFG_bbl_head_adr;
 
-enum profModeT{CCT,LCCT,LCCTM,PLAIN,STATIC_0,DTUNE, SAMPLING, TRACEONLY, INTERPADD};
+enum profModeT{CCT,LCCT,LCCTM,PLAIN,STATIC_0,DTUNE, TRACEONLY, INTERPADD};
 enum cntModeT{cycleCnt, instCnt};
 enum printModeT{instCntMode, cycleCntMode};
 
@@ -84,7 +84,11 @@ extern bool libAnaFlag;
 extern bool allThreadsFlag;
 extern bool cacheSimFlag;
 extern bool workingSetAnaFlag;
+extern bool samplingFlag;
 //extern bool DTUNE;
+
+extern bool samplingSimFlag;
+extern bool evaluationFlag;
 
 extern UINT64 hashMask0;
 extern UINT64 hashMask1;

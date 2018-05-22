@@ -402,7 +402,7 @@ VOID * paddedMmap(CONTEXT * context, AFUNPTR orgFuncptr, void* arg0, size_t arg1
 
    PIN_GetLock(&thread_lock, threadid+1);
    mlcount++;
-   PIN_ReleaseLock(&thread_lock);
+   //PIN_ReleaseLock(&thread_lock);
 
    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
    struct mallocListT *p=new struct mallocListT;
@@ -415,6 +415,8 @@ VOID * paddedMmap(CONTEXT * context, AFUNPTR orgFuncptr, void* arg0, size_t arg1
    tls->mallocList.push_back(p);
 
    paddedMallocList[(ADDRINT)ret]=(ADDRINT)ret_org;
+
+   PIN_ReleaseLock(&thread_lock);
 
    //MallocOutFile << "Return from malloc ("<<dec<<mlcount<<") [" << hex << ret <<", "<<hex<<(UINT64) ret + (UINT64) arg0<< "] Size: " << hex<<arg0 <<" | thread="<<dec<<threadid<<endl;
 
@@ -642,7 +644,7 @@ VOID * NewMalloc(CONTEXT * context, AFUNPTR orgFuncptr, size_t arg0, ADDRINT ret
 
    PIN_GetLock(&thread_lock, threadid+1);
    mlcount++;
-   PIN_ReleaseLock(&thread_lock);
+   //PIN_ReleaseLock(&thread_lock);
 
    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
    struct mallocListT *p=new struct mallocListT;
@@ -653,7 +655,7 @@ VOID * NewMalloc(CONTEXT * context, AFUNPTR orgFuncptr, size_t arg0, ADDRINT ret
    p->threadid=threadid;
    p->callerIp=0;
    tls->mallocList.push_back(p);
-
+   PIN_ReleaseLock(&thread_lock);
 
    //MallocOutFile << "Return from malloc ("<<dec<<mlcount<<") [" << hex << ret <<", "<<hex<<(UINT64) ret + (UINT64) arg0<< "] Size: " << hex<<arg0 <<" | thread="<<dec<<threadid<<endl;
 
@@ -698,7 +700,7 @@ VOID * NewValloc(CONTEXT * context, AFUNPTR orgFuncptr, size_t arg0, ADDRINT ret
 
    PIN_GetLock(&thread_lock, threadid+1);
    mlcount++;
-   PIN_ReleaseLock(&thread_lock);
+   //PIN_ReleaseLock(&thread_lock);
 
    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
    struct mallocListT *p=new struct mallocListT;
@@ -709,7 +711,7 @@ VOID * NewValloc(CONTEXT * context, AFUNPTR orgFuncptr, size_t arg0, ADDRINT ret
    p->threadid=threadid;
    p->callerIp=0;
    tls->mallocList.push_back(p);
-
+   PIN_ReleaseLock(&thread_lock);
 
    //MallocOutFile << "Return from malloc ("<<dec<<mlcount<<") [" << hex << ret <<", "<<hex<<(UINT64) ret + (UINT64) arg0<< "] Size: " << hex<<arg0 <<" | thread="<<dec<<threadid<<endl;
 
@@ -756,7 +758,7 @@ VOID * NewCalloc(CONTEXT * context, AFUNPTR orgFuncptr, size_t arg0, size_t arg1
 
    PIN_GetLock(&thread_lock, threadid+1);
    mlcount++;
-   PIN_ReleaseLock(&thread_lock);
+   //PIN_ReleaseLock(&thread_lock);
 
    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
    struct mallocListT *p=new struct mallocListT;
@@ -767,7 +769,7 @@ VOID * NewCalloc(CONTEXT * context, AFUNPTR orgFuncptr, size_t arg0, size_t arg1
    p->threadid=threadid;
    p->callerIp=0;
    tls->mallocList.push_back(p);
-
+   PIN_ReleaseLock(&thread_lock);
 
    //MallocOutFile << "Return from malloc ("<<dec<<mlcount<<") [" << hex << ret <<", "<<hex<<(UINT64) ret + (UINT64) arg0<< "] Size: " << hex<<arg0 <<" | thread="<<dec<<threadid<<endl;
 
@@ -814,7 +816,7 @@ VOID * NewRealloc(CONTEXT * context, AFUNPTR orgFuncptr, void* arg0, size_t arg1
 
    PIN_GetLock(&thread_lock, threadid+1);
    mlcount++;
-   PIN_ReleaseLock(&thread_lock);
+   //PIN_ReleaseLock(&thread_lock);
 
    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
    struct mallocListT *p=new struct mallocListT;
@@ -825,7 +827,7 @@ VOID * NewRealloc(CONTEXT * context, AFUNPTR orgFuncptr, void* arg0, size_t arg1
    p->threadid=threadid;
    p->callerIp=0;
    tls->mallocList.push_back(p);
-
+   PIN_ReleaseLock(&thread_lock);
 
    //MallocOutFile << "Return from malloc ("<<dec<<mlcount<<") [" << hex << ret <<", "<<hex<<(UINT64) ret + (UINT64) arg0<< "] Size: " << hex<<arg0 <<" | thread="<<dec<<threadid<<endl;
 
@@ -880,7 +882,7 @@ VOID * NewMmap(CONTEXT * context, AFUNPTR orgFuncptr, void* arg0, size_t arg1, i
 
    PIN_GetLock(&thread_lock, threadid+1);
    mlcount++;
-   PIN_ReleaseLock(&thread_lock);
+   //PIN_ReleaseLock(&thread_lock);
 
    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
    struct mallocListT *p=new struct mallocListT;
@@ -892,6 +894,7 @@ VOID * NewMmap(CONTEXT * context, AFUNPTR orgFuncptr, void* arg0, size_t arg1, i
    p->callerIp=0;
    tls->mallocList.push_back(p);
 
+   PIN_ReleaseLock(&thread_lock);
 
    //MallocOutFile << "Return from malloc ("<<dec<<mlcount<<") [" << hex << ret <<", "<<hex<<(UINT64) ret + (UINT64) arg0<< "] Size: " << hex<<arg0 <<" | thread="<<dec<<threadid<<endl;
 
@@ -934,7 +937,6 @@ int New_posix_memalign(CONTEXT * context, AFUNPTR orgFuncptr, void** arg0, size_
 
    PIN_GetLock(&thread_lock, threadid+1);
    mlcount++;
-   PIN_ReleaseLock(&thread_lock);
 
    ThreadLocalData *tls = static_cast<ThreadLocalData*>( PIN_GetThreadData( tls_key, threadid) );
    struct mallocListT *p=new struct mallocListT;
@@ -946,6 +948,7 @@ int New_posix_memalign(CONTEXT * context, AFUNPTR orgFuncptr, void** arg0, size_
    p->callerIp=0;
    tls->mallocList.push_back(p);
 
+   PIN_ReleaseLock(&thread_lock);
 
    //MallocOutFile << "Return from malloc ("<<dec<<mlcount<<") [" << hex << ret <<", "<<hex<<(UINT64) ret + (UINT64) arg0<< "] Size: " << hex<<arg0 <<" | thread="<<dec<<threadid<<endl;
 

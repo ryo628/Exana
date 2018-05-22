@@ -20,7 +20,7 @@ All Rights Reserved.
 #include <stddef.h>
 
 #include "pin.H"
-#include "portability.H"
+//#include "portability.H"
 using namespace std;
 
 #include <string.h>
@@ -32,7 +32,21 @@ using namespace std;
 
 #include "memAna.h"
 
-#if 1
+#define INS_MIX_MEM_RATIO 4
+extern UINT64 exana_start_cycle;
+extern UINT64 prev_cycle_sim_end;
+extern UINT64 t_period_sim;
+extern UINT64 t_warmup;
+extern UINT64 t_evaluation;
+extern bool samplingSimFlag;
+extern bool evaluationFlag;
+extern UINT64 n_memref;
+extern  UINT64 prev_memref;
+
+
+//#define TRACE_SAMPLING
+
+#if 0
 // for per inst analysis
 const bool byInstAdr=1;
 
@@ -47,13 +61,14 @@ const bool missOriginOn=1;
 #else
 const bool byInstAdr=1;
 const bool pseudoFAsimOn=0;
-const bool FAsimOn=0;
+const bool FAsimOn=1;
 const bool missOriginOn=0;
 #endif
 
 // for physical address based L2/L3 simulation
 //const bool physicalAdrOn=0;
-const bool physicalAdrOn=1;
+//const bool physicalAdrOn=1;
+extern bool physicalAdrOn;
 
 const bool NRU_On=0;
 
@@ -92,6 +107,15 @@ struct lastTimeWhoEvictT{
   ADDRINT originPC;
   struct lastTimeWhoEvictT *next;
 };
+
+struct pagemapListT {
+  unsigned long long pageID;
+  unsigned long long pfn;
+  struct pagemapListT *next;  
+  
+};
+
+
 
 ////////////////////////////////////
 
@@ -198,13 +222,6 @@ struct CacheAccessInfoT {
 };
 
 
-/*
- * Number of OS pages for the buffer
- */
-#define NUM_BUF_PAGES 1024
-//#define NUM_BUF_PAGES 1
-
-
 //map< uint64_t, CacheAccessInfo> addr_results;
 
 //struct CacheAccessInfoT **addr_results;
@@ -231,6 +248,7 @@ class ThreadLocalData
     ~ThreadLocalData();
   void DumpBuffer( struct MEMREF * reference, UINT64 numElements, THREADID tid );
   void csim_init(int l1_cache_size, int l1_way_num, int l2_cache_size, int l2_way_num, int l3_cache_size,int l3_way_num, int block_size);
+  void init_cache(struct cacheT *c, UINT64 size, UINT64 assoc, UINT64 line_size, enum clevel cacheLevel);
 
   void cachesim(ADDRINT adr,  INT32 size, ADDRINT pc, THREADID threadid);
   bool isCacheMiss(struct cacheT *c, ADDRINT adr, INT32 size,  struct CacheAccessInfoT *cinfo, THREADID threadid);
@@ -252,7 +270,7 @@ class ThreadLocalData
 
   struct cacheT l1c, l2c, l3c;
   struct CacheAccessInfoT **addr_results;
-  UINT64 L1access,L1miss,L2miss,L3miss;
+  UINT64 L1access,L1miss,L2miss,L3miss,memReadCnt,memWriteCnt;
 
   // for mallocDetect
   vector <struct mallocListT *> mallocList;
@@ -264,7 +282,23 @@ class ThreadLocalData
   struct lastTimeWhoEvictT* findMissPCInHash(struct cacheT *c, uint64_t tag);
   void updateMissOriginPCInHash(struct cacheT *c, ADDRINT replacedPC, ADDRINT missPC);
 
+
+
+  struct pagemapListT **pagemapList;
+  UINT64 numPagemapList;
+  struct pagemapListT *basePagemapList;
+
+  struct pagemapListT* checkPfnInHash(ADDRINT pageID);
+  UINT64 countPfnInHash();
+  void flushPfnInHash();
+  struct pagemapListT* insertNewPfnInHash(ADDRINT pageID,ADDRINT pfn);
+  UINT64 lookup_pagemap(UINT64 vaddr);
+
+
+  // for memref count and WS analysis
   struct upperAdrListElem **hashTable;
+
+
   void initHashTable(void);
   void countAndResetWorkingSet(treeNode *node);
   UINT64 calcWorkingDataSize(enum flagMode mode);
@@ -288,8 +322,6 @@ void outputByInst();
 extern vector <THREADID > tid_list;
 extern void flushCache(struct cacheT *c);
 
-extern bool samplingSimFlag;
-extern bool evaluationFlag;
 
 #endif
 

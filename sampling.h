@@ -14,10 +14,7 @@ All Rights Reserved.
 #ifndef _SAMPLING_H_
 #define _SAMPLING_H_
 
-void ExanaDBT(TRACE trace);
-void ipSampling(INS ins);
-void samplingSim(INS ins);
-bool isSamplingSim();
-extern string DBTtargetRtnName;
+void checkSamplingInterval(INS ins);
+bool isSimPhase();
 
 #endif

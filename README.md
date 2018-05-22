@@ -4,7 +4,7 @@
 
 Exana: EXecution-driven Application aNAlysis tool
 
-Copyright (C)   2014-2016,   Yukinori Sato
+Copyright (C)   2014-2018,   Yukinori Sato
 All Rights Reserved. 
 
 ------------------------------------------------------------------------------
@@ -23,10 +23,10 @@ Currently, Exana provide the following functions:
 
     For information about Pin tool kit, please check:
     	http://pintool.org/ 
-    Here, Exana is verified using Pin tool kit rev 71313 for Intel64 linux on CentOS 6.  (In this version, we did not support Pin-3.x and CentOS 7.  If you would like to run on such environment, please let me know.)
+    Here, Exana is verified using Pin 3.4 rev 97438 for Intel64 linux on CentOS 7.  (For Pin-2.x and CentOS 6, please use the previous version uploaded on Sep 2017.)
 
-* Unpack the pin-2.14-71313-gcc.4.4.7-linux.tar.gz
-* cd pin-2.14-71313-gcc.4.4.7-linux.tar.gz/source/tools
+* Unpack the pin-3.4-97438-gf90d1f746-gcc-linux
+* cd pin-3.4/source/tools
 * git clone https://github.com/YukinoriSato/Exana.git
 * cd Exana
 * make

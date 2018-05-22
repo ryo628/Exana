@@ -13,7 +13,7 @@ All Rights Reserved.
 #include "OrderPatMakeStr.h"
 #include "OrderPat.h"
 
-
+#if CYCLE_MEASURE
 extern UINT64 last_cycleCnt;
 extern UINT64 cycle_application;
 
@@ -32,6 +32,7 @@ extern UINT64 cycle_whenMemoryWrite;
 extern UINT64 cycle_whenMemoryRead;
 extern UINT64 cycle_whenMemOperation;
 extern UINT64 cycle_whenCacheSim;
+#endif
 
 FILE *outFileOfLCCTM;
 
@@ -90,10 +91,10 @@ extern UINT64 longjmpCnt;
 extern UINT64 indirectJumpCnt;
 extern UINT64 loopAprCntByIndirectJump;
 
-extern UINT64 memCntR;
-extern UINT64 memCntW;
-extern UINT64 accumulatedMemSizeW;
-extern UINT64 accumulatedMemSizeR;
+//extern UINT64 memCntR;
+//extern UINT64 memCntW;
+//extern UINT64 accumulatedMemSizeW;
+//extern UINT64 accumulatedMemSizeR;
 
 extern UINT64 accBaseInst;
 extern UINT64 accFpInst;
@@ -210,6 +211,7 @@ void printProfileInfo(void){
 
   }
 
+#if CYCLE_MEASURE
   UINT64 staticAnaCycle=(cycle_staticAna_Trace + cycle_staticAna_ImageLoad);
   UINT64 dynamicCycle=cycle_whenMarkers+cycle_whenHeaderMarkers+cycle_whenIndirectBrSearch+cycle_whenRtnTop
     +cycle_whenBbl+cycle_whenRet+cycle_whenFuncCall+cycle_whenIndirectCall+cycle_whenMemoryRead+cycle_whenMemoryWrite+cycle_whenMemOperation+cycle_whenCacheSim;
@@ -255,6 +257,7 @@ void printProfileInfo(void){
   if(cycle_whenMemOperation>0.01*totalCycle)  outFileOfProf<<"     whenMemOper   "<<setprecision(2)<< setiosflags(ios::fixed) << setw(5) << right << (float)cycle_whenMemOperation/(dynamicCycle)*100<<" [%] "<<cycle_whenMemOperation<<" [cycle]"<<endl;
   if(cycle_whenCacheSim>0.01*totalCycle)  outFileOfProf<<"     whenCacheSim   "<<setprecision(2)<< setiosflags(ios::fixed) << setw(5) << right << (float)cycle_whenCacheSim/(dynamicCycle)*100<<" [%] "<<cycle_whenCacheSim<<" [cycle]"<<endl;
 
+#endif
 
   //  outFileOfProf<<"timerCnt "<<dec<<timerCnt<<endl;
 
@@ -274,7 +277,7 @@ void outputCSV(void){
   outFileOfProf <<dec<<numDyInst <<", "<<numDyRtnNode <<", "<<numDyLoopNode <<", "<< numDyIrrLoopNode<<", ";
   outFileOfProf <<dec<<numDyMemRead <<", "<< numDyMemWrite<<", "<<numDyDepEdge <<", ";
   outFileOfProf <<dec<<indirectJumpCnt <<", "<<loopAprCntByIndirectJump <<", "<<longjmpCnt <<", "<<numDyRecursion<<", ";
-  outFileOfProf <<dec<<totalTime <<", "<< cycle_staticAna_ImageLoad<<", "<<endl;
+  //outFileOfProf <<dec<<totalTime <<", "<< cycle_staticAna_ImageLoad<<", "<<endl;
   outFileOfProf<<"----CSV--------CSV--------CSV--------CSV--------CSV--------CSV--------CSV----"<<endl;
 
 }
@@ -407,11 +410,16 @@ VOID Fini(INT32 code, VOID *v)
   progFiniTime=getTime_sec();
   totalTime=progFiniTime-progStartTime;
 
-  //cout<<"Fini"<<endl;
+  outFileOfProf<<"Fini start"<<endl;
   //return;
 
   if(profMode==PLAIN){
     outFileOfProf<<"Fini:   Total_time      "<< setw(10)<< setprecision(2) << fixed<<(double) totalTime<<" [s]"<<endl;
+    return;
+  }
+
+  if(profMode==STATIC_0){
+    outFileOfProf<<"Fini:   Total_time      "<< setw(10)<< setprecision(2) << fixed<<(double) totalTime<<" [s]\n  ExanaDBT did not work because the target kernel was not detect again"<<endl;
     return;
   }
 
@@ -455,11 +463,13 @@ VOID Fini(INT32 code, VOID *v)
 
     //return;
   }
+#if CYCLE_MEASURE
   else if(cntMode==cycleCnt && cycle_application==0){
     outFileOfProf<<"  The obtained cycle_application at runtime is ZERO"<<endl;
 
     //return;
   }
+#endif
 
   outFileOfProf<<"printStaticLoopInfo()"<<endl;
   if(profMode==LCCTM || profMode==LCCT){
@@ -469,7 +479,7 @@ VOID Fini(INT32 code, VOID *v)
 
 
 
-  if(rootNodeOfTree.size()==0 && (profMode!=SAMPLING && profMode!=TRACEONLY && profMode!=PLAIN && profMode!=INTERPADD)){
+  if(rootNodeOfTree.size()==0 && (samplingFlag==0 && profMode!=TRACEONLY && profMode!=PLAIN && profMode!=INTERPADD)){
     printProfileInfo();
     outFileOfProf<<" Emergency STOP at Fini().  rootNodeOfTree is 0 "<<endl;
     return;
@@ -530,7 +540,7 @@ VOID Fini(INT32 code, VOID *v)
   if(cacheSimFlag){
     outFileOfProf<<"\nCacheSim result:         "<<endl;
 
-    if(profMode==SAMPLING)
+    if(samplingFlag)
       outFileOfProf<<"#cacheSim_eval = "<<dec<<n_cacheSim_eval<<endl;
 
     printCacheStat();
@@ -571,6 +581,8 @@ VOID Fini(INT32 code, VOID *v)
       calc_accumMemAccessByte(rootNodeOfTree[i]);
       calc_accumMemAccessByteR(rootNodeOfTree[i]);
       calc_accumMemAccessByteW(rootNodeOfTree[i]);
+      calc_accumMemAccessCntR(rootNodeOfTree[i]);
+      calc_accumMemAccessCntW(rootNodeOfTree[i]);
       //outFileOfProf<<"   accumInst   "<<dec<<rootNodeOfTree[i]->statAccum->accumInstCnt<<endl;
     }
     //show_tree_dfs(rootNodeOfTree[i],0); 
@@ -594,7 +606,7 @@ VOID Fini(INT32 code, VOID *v)
     }
     
     char s0[6]="Exana";
-    UINT32 a0=0;
+    UINT32 a0=1;  // version
     char *s1;
     char ss1[6]="LCCTM";
     char ss2[6]="wsAna";

@@ -296,6 +296,8 @@ void init_accumStat(struct treeNode *node)
   node->statAccum->accumMemAccessByte=0;
   node->statAccum->accumMemAccessByteR=0;
   node->statAccum->accumMemAccessByteW=0;
+  node->statAccum->accumMemAccessCntR=0;
+  node->statAccum->accumMemAccessCntW=0;
 
   struct treeNode *child=node->child;
   while(child){
@@ -438,6 +440,47 @@ UINT64 calc_accumMemAccessByteW(struct treeNode *node)
 
 }
 
+UINT64 calc_accumMemAccessCntR(struct treeNode *node)
+{
+
+  UINT64 accum=0;
+  if (node == NULL) return 0;
+
+  //cout<<"now in loop "<<dec<<node->loopID<<" "<<node->stat->instCnt<<endl;
+  
+  accum+=node->stat->memAccessCntR;
+  struct treeNode *child=node->child;
+  while(child){
+    accum+=calc_accumMemAccessCntR(child);
+    child=child->sibling;
+  }
+
+  //cout<<"accum loopID "<<dec<<node->loopID<<"  "<<accum<<endl;
+  node->statAccum->accumMemAccessCntR=accum;
+  return accum;
+
+}
+UINT64 calc_accumMemAccessCntW(struct treeNode *node)
+{
+
+  UINT64 accum=0;
+  if (node == NULL) return 0;
+
+  //cout<<"now in loop "<<dec<<node->loopID<<" "<<node->stat->instCnt<<endl;
+  
+  accum+=node->stat->memAccessCntW;
+  struct treeNode *child=node->child;
+  while(child){
+    accum+=calc_accumMemAccessCntW(child);
+    child=child->sibling;
+  }
+
+  //cout<<"accum loopID "<<dec<<node->loopID<<"  "<<accum<<endl;
+  node->statAccum->accumMemAccessCntW=accum;
+  return accum;
+
+}
+
 
 extern void printDepNodeList(struct treeNode * );
 
@@ -498,8 +541,10 @@ void createDotNode_mem(struct treeNode *node, int dep, enum printModeT printMode
     ratio=(float)node->stat->instCnt*100/totalInst;
   }
   else{
+#if CYCLE_MEASURE    
     accumRatio=(float)node->statAccum->accumCycleCnt*100/cycle_application;
     ratio=(float)node->stat->cycleCnt*100/cycle_application;
+#endif
   }
 
   //string rtnName=RTN_FindNameByAddress(node->rtnTopAddr);;
