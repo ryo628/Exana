@@ -4,15 +4,24 @@ Open Source License
 /******************************************************************
 Exana: EXecution-driven Application aNAlysis tool
 
-Copyright (C)   2014-2016,   Yukinori Sato
+Copyright (C)   2014-2018,   Yukinori Sato
 All Rights Reserved. 
 ******************************************************************/
 
 Developed by:
 Yukinori Sato.
-Endo Team, Development of System Software Technologies for post-Peta 
-Scale HPC, JST CREST. 
-Tokyo Institute of Technology.
+2018-
+  Computer Systems and Performance Engineering Lab.
+  Dept. of Computer Science and Engneering,
+  Toyohashi University of Technology.
+2015-2018
+  Endo Team, Development of System Software Technologies for post-Peta 
+  Scale HPC, JST CREST. 
+  Tokyo Institute of Technology.
+2014-2015
+  Sato Group, Development of System Software Technologies for post-Peta 
+  Scale HPC, JST CREST.
+  Japan Advanced Institute of Science and Technology (JAIST).
 
 
 Permission is hereby granted, free of charge, to any person obtaining
@@ -31,10 +40,10 @@ subject to the following conditions:
     the documentation and/or other materials provided with the
     distribution.
 
-    Neither the names of JST CREST, Tokyo Institute of Technology nor
-    the names of its contributors may be used to endorse or promote
-    products derived from this Software without specific prior written
-    permission.
+    Neither the names of Toyohashi University of Technology, JST
+    CREST, Tokyo Institute of Technology, JAIST nor the names of its
+    contributors may be used to endorse or promote products derived
+    from this Software without specific prior written permission.
 
 THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
 EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
@@ -56,9 +65,10 @@ and restrictions which apply to that code.
 
 The disclaimer of warranty in the University of Illinois Open Source
 License applies to all code in this Exana Distribution, and nothing in
-any of the other licenses gives permission to use the names of the JST
-CREST, Tokyo Institute of Technology nor its contributors to endorse
-or promote products derived from this Software.
+any of the other licenses gives permission to use the names of the
+Toyohashi University of Technology, JST CREST, Tokyo Institute of
+Technology, JAIST nor its contributors to endorse or promote products
+derived from this Software.
 
 The following pieces of software have additional or alternate
 copyrights, licenses, and/or restrictions:
