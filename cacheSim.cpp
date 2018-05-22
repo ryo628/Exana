@@ -365,7 +365,7 @@ struct pagemapListT* ThreadLocalData::insertNewPfnInHash(ADDRINT pageID,ADDRINT 
 
     if(offset==0){
       //c->baseLtwet=(struct lastTimeWhoEvictT**) malloc(sizeof(struct lastTimeWhoEvictT)*MALLOC_NUM);
-      cout<<"new PagemapList"<<endl;
+      //cout<<"new PagemapList"<<endl;
       basePagemapList=new struct pagemapListT [HASH_TABLE_SIZE];
       memset(basePagemapList,0,sizeof(struct pagemapListT)*HASH_TABLE_SIZE);
     }
