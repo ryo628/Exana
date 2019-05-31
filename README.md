@@ -9,6 +9,7 @@ All Rights Reserved.
 
 ------------------------------------------------------------------------------
 
+Please check [ExanaPkg](https://github.com/YukinoriSato/ExanaPkg), a packaged version (pre-compiled into binary code) with utility tools.
 
 Currently, Exana provide the following functions:
 * LCCT (Loop and call context tree)
