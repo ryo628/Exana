@@ -874,7 +874,7 @@ void ThreadLocalData::updateMissOriginPCInHash(struct cacheT *c, ADDRINT key, AD
 
     if(offset==0){
       //c->baseLtwet=(struct lastTimeWhoEvictT**) malloc(sizeof(struct lastTimeWhoEvictT)*MALLOC_NUM);
-      cout<<"new LTWET"<<endl;
+      //cout<<"new LTWET"<<endl;
       c->baseLtwet=new struct lastTimeWhoEvictT [MALLOC_NUM];
     }
 

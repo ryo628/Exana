@@ -13,13 +13,13 @@ All Rights Reserved.
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-
 #include "staticAna.h"
 #include "loopContextProf.h"
 #include "main.h"
 #include "instStat.h"
 
 //#define DEBUG_MODE
+
 
 INT64 numInstElem=0;
 INT64 numInstElemBody=0;

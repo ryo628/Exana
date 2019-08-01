@@ -46,7 +46,7 @@ extern  UINT64 prev_memref;
 
 //#define TRACE_SAMPLING
 
-#if 0
+#if 1
 // for per inst analysis
 const bool byInstAdr=1;
 
