@@ -1,5 +1,5 @@
 /* ******************************************************************************
- * Copyright (c) 2013-2018 Google, Inc.  All rights reserved.
+ * Copyright (c) 2013-2016 Google, Inc.  All rights reserved.
  * Copyright (c) 2011 Massachusetts Institute of Technology  All rights reserved.
  * Copyright (c) 2008 VMware, Inc.  All rights reserved.
  * ******************************************************************************/
@@ -32,86 +32,51 @@
  * DAMAGE.
  */
 
-#include "utils.h"
-#include "drx.h"
+#include "dr_api.h" /* for file_t, client_id_t */
 #include <stdio.h>
+
+#define BUFFER_SIZE_BYTES(buf) sizeof(buf)
+#define BUFFER_SIZE_ELEMENTS(buf) (BUFFER_SIZE_BYTES(buf) / sizeof((buf)[0]))
+#define BUFFER_LAST_ELEMENT(buf) (buf)[BUFFER_SIZE_ELEMENTS(buf) - 1]
+#define NULL_TERMINATE_BUFFER(buf) BUFFER_LAST_ELEMENT(buf) = 0
+
 #ifdef WINDOWS
-#    include <io.h>
+#    define IF_WINDOWS(x) x
+#    define IF_UNIX_ELSE(x, y) y
+#else
+#    define IF_WINDOWS(x)
+#    define IF_UNIX_ELSE(x, y) x
 #endif
 
+#ifdef WINDOWS
+#    define DISPLAY_STRING(msg) dr_messagebox("%s", msg)
+#    define IF_WINDOWS(x) x
+#else
+#    define DISPLAY_STRING(msg) dr_printf("%s\n", msg);
+#    define IF_WINDOWS(x) /* nothing */
+#endif
+
+/* open a log file
+ * - id:        client id for getting the client library path
+ * - drcontext: DR's context for per-thread logging, pass NULL if global logging
+ * - path:      where the log file should be, pass NULL if using client library path
+ * - name:      name of the log file
+ * - flags:     file open mode, e.g., DR_FILE_WRITE_REQUIRE_NEW
+ */
 file_t
 log_file_open(client_id_t id, void *drcontext, const char *path, const char *name,
-              uint flags)
-{
-    file_t log;
-    char log_dir[MAXIMUM_PATH];
-    char buf[MAXIMUM_PATH];
-    size_t len;
-    char *dirsep;
+              uint flags);
 
-    DR_ASSERT(name != NULL);
-    len = dr_snprintf(log_dir, BUFFER_SIZE_ELEMENTS(log_dir), "%s",
-                      path == NULL ? dr_get_client_path(id) : path);
-    DR_ASSERT(len > 0);
-    NULL_TERMINATE_BUFFER(log_dir);
-    dirsep = log_dir + len - 1;
-    if (path == NULL /* removing client lib */ ||
-        /* path does not have a trailing / and is too large to add it */
-        (*dirsep != '/' IF_WINDOWS(&&*dirsep != '\\') &&
-         len == BUFFER_SIZE_ELEMENTS(log_dir) - 1)) {
-        for (dirsep = log_dir + len; *dirsep != '/' IF_WINDOWS(&&*dirsep != '\\');
-             dirsep--)
-            DR_ASSERT(dirsep > log_dir);
-    }
-    /* remove trailing / if necessary */
-    if (*dirsep == '/' IF_WINDOWS(|| *dirsep == '\\'))
-        *dirsep = 0;
-    else if (sizeof(log_dir) > (dirsep + 1 - log_dir) / sizeof(log_dir[0]))
-        *(dirsep + 1) = 0;
-    NULL_TERMINATE_BUFFER(log_dir);
-    /* we do not need call drx_init before using drx_open_unique_appid_file */
-    log = drx_open_unique_appid_file(log_dir, dr_get_process_id(), name, "log", flags,
-                                     buf, BUFFER_SIZE_ELEMENTS(buf));
-    if (log != INVALID_FILE) {
-        char msg[MAXIMUM_PATH];
-        len = dr_snprintf(msg, BUFFER_SIZE_ELEMENTS(msg), "Data file %s created", buf);
-        DR_ASSERT(len > 0);
-        NULL_TERMINATE_BUFFER(msg);
-        dr_log(drcontext, DR_LOG_ALL, 1, "%s", msg);
-#ifdef SHOW_RESULTS
-        DISPLAY_STRING(msg);
-#    ifdef WINDOWS
-        if (dr_is_notify_on()) {
-            /* assuming dr_enable_console_printing() is called in the initialization */
-            dr_fprintf(STDERR, "%s\n", msg);
-        }
-#    endif /* WINDOWS */
-#endif     /* SHOW_RESULTS */
-    }
-    return log;
-}
-
+/* close a log file opened by log_file_open */
 void
-log_file_close(file_t log)
-{
-    dr_close_file(log);
-}
+log_file_close(file_t log);
 
+/* Converts a raw file descriptor into a FILE stream. */
 FILE *
-log_stream_from_file(file_t f)
-{
-#ifdef WINDOWS
-    int fd = _open_osfhandle((intptr_t)f, 0);
-    if (fd == -1)
-        return NULL;
-    return _fdopen(fd, "w");
-#else
-    return fdopen(f, "w");
-#endif
-}
+log_stream_from_file(file_t f);
 
+/* log_file_close does *not* need to be called when calling this on a
+ * stream converted from a file descriptor.
+ */
 void
-log_stream_close(FILE *f)
-{
-    fclose(f); /* closes underlying fd too for all platforms */
-}
+log_stream_close(FILE *f);
