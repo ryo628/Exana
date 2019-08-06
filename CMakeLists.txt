@@ -17,3 +17,4 @@ find_package(DynamoRIO)
 # add dynamorio
 add_subdirectory(dynamorio)
 add_subdirectory(lib)
+add_subdirectory(src)
