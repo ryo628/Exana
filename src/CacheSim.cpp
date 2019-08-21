@@ -24,6 +24,9 @@ void CacheSim::Run(){
     this->HelloWorld();
 #endif
     this->OpenFile();
+    for( int i=0; i<(int)this->data.size(); i++){
+        this->data[i].Disp();
+    }
 }
 
 void CacheSim::OpenFile(){
@@ -37,10 +40,7 @@ void CacheSim::OpenFile(){
 
     while( getline(ifs, line) ){
         std::vector<std::string> strvec = Utils::Split(line, ',');
-        
-        for( int i=0; i < strvec.size(); i++ ){
-            std::cout << strvec.at(i);
-        }
-        std::cout << std::endl;
+        MemData d(strvec[0],strvec[1],strvec[2],strvec[3]);
+        data.push_back(d);
     }
 }
