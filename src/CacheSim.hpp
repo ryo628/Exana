@@ -22,7 +22,7 @@ class CacheSim{
         void run();
         void openFile();
         void checkAddr(uint64_t);
-        void showResult();
+        void printResult();
 };
 
 #endif

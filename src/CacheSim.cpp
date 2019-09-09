@@ -35,8 +35,8 @@ void CacheSim::run(){
     for(auto d : this->addrList){
         this->checkAddr(d);
     }
-    this->showResult();
-    //cl1->showMemory();
+    this->printResult();
+    //cl1->printMemory();
 }
 
 void CacheSim::checkAddr(uint64_t addr){
@@ -94,7 +94,7 @@ void CacheSim::openFile(){
     ifs.close();
 }
 
-void CacheSim::showResult(){
+void CacheSim::printResult(){
     std::cout.setf(std::ios::dec, std::ios::basefield);
     std::cout << "Result" << std::endl;
     std::cout << "\t Total Access Count : " << this->access << std::endl;
