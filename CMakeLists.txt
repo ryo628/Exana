@@ -5,6 +5,9 @@ cmake_minimum_required(VERSION 2.8.10.1)
 enable_language(C)
 enable_language(CXX)
 include(dynamorio/make/policies.cmake NO_POLICY_SCOPE)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # set project
 project(Exana NONE)
