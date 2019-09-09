@@ -12,7 +12,7 @@ int main( int argc, char ** argv )
         if( option == "c2sim"){
             std::string fname = argv[2];
             CacheSim c(fname);
-            c.Run();
+            c.run();
         }else{
             std::cout << "Error : option error!" << std::endl;
         }
