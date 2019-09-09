@@ -82,6 +82,9 @@ typedef struct _mem_ref_t {
  */
 #define MEM_BUF_SIZE (sizeof(mem_ref_t) * MAX_NUM_MEM_REFS)
 
+//#define SHOW_RESULTS
+//#define OUTPUT_TEXT
+
 /* thread private log file and counter */
 typedef struct {
     char *buf_ptr;
@@ -90,7 +93,7 @@ typedef struct {
     ptr_int_t buf_end;
     void *cache;
     file_t log;
-#if OUTPUT_TEXT
+#ifdef OUTPUT_TEXT
     FILE *logf;
 #endif
     uint64 num_refs;
@@ -232,7 +235,7 @@ event_thread_init(void *drcontext)
                       DR_FILE_CLOSE_ON_FORK |
 #endif
                           DR_FILE_ALLOW_LARGE);
-#if OUTPUT_TEXT
+#ifdef OUTPUT_TEXT
     data->logf = log_stream_from_file(data->log);
     fprintf(data->logf,
             "Format: <instr address>,<(r)ead/(w)rite>,<data size>,<data address>\n");
@@ -319,7 +322,7 @@ memtrace(void *drcontext)
      */
     for (i = 0; i < num_refs; i++) {
         /* We use PIFX to avoid leading zeroes and shrink the resulting file. */
-        fprintf(data->logf, PIFX ",%c,%d," PIFX "\n", (ptr_uint_t)mem_ref->pc,
+        fprintf(data->logf, ",%c,%d,\n", (ptr_uint_t)mem_ref->pc,
                 mem_ref->write ? 'w' : 'r', (int)mem_ref->size,
                 (ptr_uint_t)mem_ref->addr);
         ++mem_ref;
