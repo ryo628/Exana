@@ -4,7 +4,8 @@ FullyAssociativeCacheMemory::FullyAssociativeCacheMemory(enum CacheLevel _cl, un
     :CacheMemory(_cl, _size),
     linesize(_ls){
     this->setnum = this->size / this->linesize;
-    this->tagsize = std::log2(this->setnum);
+    this->offset = std::log2(this->linesize);
+    this->tagsize = sizeof(uint64_t)*8-this->offset;
     
     // show status
     this->printStatus();
@@ -20,10 +21,11 @@ void FullyAssociativeCacheMemory::printStatus(){
     std::cout << "\t Line Size : " << this->linesize << std::endl;
     std::cout << "\t Set Num : " << this->setnum << std::endl;
     std::cout << "\t Tag Size : " << this->tagsize << "bit" << std::endl;
+    std::cout << "\t Offset Size : " << this->offset << "bit" << std::endl;
 }
 
 void FullyAssociativeCacheMemory::loadMemory(uint64_t addr){
-    uint64_t tag = addr >> this->tagsize;
+    uint64_t tag = addr >> this->offset;
 
     // LRU Listの先頭に追加
     MemoryEntry entry(tag);
@@ -48,13 +50,13 @@ void FullyAssociativeCacheMemory::printMemory(){
     // dump LRU List Entry
     std::cout.setf(std::ios::hex, std::ios::basefield);
     for (auto item : this->cacheLRUList ){
-        std::cout << "\t" << item.getTag() << std::endl;
+        std::cout << "\t" << std::bitset<sizeof(uint64_t)*8>(item.getTag()) << std::endl;
     }
     std::cout.setf(std::ios::dec, std::ios::basefield);
 }
 
 bool FullyAssociativeCacheMemory::isCacheMiss( uint64_t addr ){
-    uint64_t tag = addr >> this->tagsize;
+    uint64_t tag = addr >> this->offset;
 
     if( this->cacheMap.count(tag) == 1 ){
         // hitした時
