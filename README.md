@@ -20,26 +20,10 @@ Currently, Exana provide the following functions:
 
 
 ## How to build
-* Download Pin tool kit Intel64 linux.
-
-    For information about Pin tool kit, please check:
-    	http://pintool.org/ 
-    Here, Exana is verified using Pin 3.4 rev 97438 for Intel64 linux on CentOS 7.  (For Pin-2.x and CentOS 6, please use the previous version uploaded on Sep 2017.)
-
-* Unpack the pin-3.4-97438-gf90d1f746-gcc-linux
-* cd pin-3.4/source/tools
-* git clone https://github.com/YukinoriSato/Exana.git
-* cd Exana
-* make
-
+see https://github.com/ryo628/Exana/wiki/How-To-Bulid
 
 ## How to run
-Run Exana with your target:
-* pin -t obj-intel64/Exana.so -- ./a.out [input.dat]
-
-ExanaPkg is provided as an utility for Exana.
-For more details, please check HowToUse in ExanaPkg.
-
+see https://github.com/ryo628/Exana/wiki/How-To-Run
 
 ## Citation and Details for Exana
 
