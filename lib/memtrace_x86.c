@@ -134,6 +134,11 @@ instrument_mem(void *drcontext, instrlist_t *ilist, instr_t *where, int pos, boo
 DR_EXPORT void
 dr_client_main(client_id_t id, int argc, const char *argv[])
 {
+    int i;
+    for(i=0;i<argc;i++){
+        dr_fprintf(STDERR, "%s\n", argv[i]);
+    }
+
     /* We need 2 reg slots beyond drreg's eflags slots => 3 slots */
     drreg_options_t ops = { sizeof(ops), 3, false };
     /* Specify priority relative to other instrumentation operations: */
@@ -230,7 +235,7 @@ event_thread_init(void *drcontext)
      * in a path as a client argument.
      */
     data->log =
-        log_file_open(client_id, drcontext, NULL /* using client lib path */, "memtrace",
+        log_file_open(client_id, drcontext, ".", "memtrace",
 #ifndef WINDOWS
                       DR_FILE_CLOSE_ON_FORK |
 #endif
