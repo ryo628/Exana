@@ -12,16 +12,18 @@ FullyAssociativeCacheMemory::FullyAssociativeCacheMemory(enum CacheLevel _cl, un
 }
 
 FullyAssociativeCacheMemory::~FullyAssociativeCacheMemory(){
-    // 
+    // free memory
+    this->cacheLRUList.clear();
+    this->cacheMap.clear();
 }
 
 void FullyAssociativeCacheMemory::printStatus(){
     std::cout << "CacheLevel : " << this->level << std::endl;
-    std::cout << "\t Size : " << this->size << "byte" << std::endl;
-    std::cout << "\t Line Size : " << this->linesize << std::endl;
-    std::cout << "\t Set Num : " << this->setnum << std::endl;
-    std::cout << "\t Tag Size : " << this->tagsize << "bit" << std::endl;
-    std::cout << "\t Offset Size : " << this->offset << "bit" << std::endl;
+    std::cout << "\t Size : " << this->size << " byte" << std::endl;
+    std::cout << "\t Line Size : " << this->linesize << " byte" << std::endl;
+    std::cout << "\t Set Num : " << this->setnum << " sets" << std::endl;
+    std::cout << "\t Tag Size : " << this->tagsize << " bit" << std::endl;
+    std::cout << "\t Offset Size : " << this->offset << " bit" << std::endl;
 }
 
 void FullyAssociativeCacheMemory::loadMemory(uint64_t addr){

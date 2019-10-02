@@ -17,8 +17,6 @@ class CacheMemory{
     protected:
         enum CacheLevel level;      // キャッシュレベル
         unsigned int size;          // キャッシュサイズ(byte)
-        std::list<MemoryEntry> cacheLRUList;
-        std::unordered_map<uint64_t, std::list<MemoryEntry>::iterator> cacheMap;
     public:
         CacheMemory(enum CacheLevel, unsigned int);
         ~CacheMemory();

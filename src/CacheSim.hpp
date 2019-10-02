@@ -4,6 +4,7 @@
 #include <list>
 #include "CacheMemory.hpp"
 #include "FullyAssociativeCacheMemory.hpp"
+#include "SetAssociativeCacheMemory.hpp"
 #include "Utils.hpp"
 
 #ifndef _CACHESIM_H_
