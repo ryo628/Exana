@@ -7,7 +7,5 @@ CacheMemory::CacheMemory(enum CacheLevel _cl, unsigned int _size) :
 }
 
 CacheMemory::~CacheMemory(){
-    // free memory
-    this->cacheLRUList.clear();
-    this->cacheMap.clear();
+    //
 }
