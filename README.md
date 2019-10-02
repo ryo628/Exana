@@ -20,10 +20,10 @@ Currently, Exana provide the following functions:
 
 
 ## How to build
-see https://github.com/ryo628/Exana/wiki/How-To-Bulid
+see [wiki](https://github.com/ryo628/Exana/wiki/How-To-Bulid)  
 
 ## How to run
-see https://github.com/ryo628/Exana/wiki/How-To-Run
+see [wiki](https://github.com/ryo628/Exana/wiki/How-To-Run)
 
 ## Citation and Details for Exana
 
