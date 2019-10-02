@@ -1,10 +1,10 @@
 #include "CacheSim.hpp"
 
 CacheSim::CacheSim(){
-    CacheSim("");
+    CacheSim("","");
 }
 
-CacheSim::CacheSim(std::string fn) : fname(fn){
+CacheSim::CacheSim(std::string fn, std::string cmode) : fname(fn){
 #ifdef DEBUG
     std::cout << "file name : " << this->fname << std::endl;
 #endif
@@ -15,6 +15,8 @@ CacheSim::CacheSim(std::string fn) : fname(fn){
     l1hits = 0;
     l2hits = 0;
     l3hits = 0;
+
+    isFullyAssociative = (cmode=="full")?true:false;
 }
 
 CacheSim::~CacheSim(){
@@ -25,26 +27,34 @@ void CacheSim::run(){
 #ifdef DEBUG
     this->HelloWorld();
 #endif
-    unsigned int ls = 64;/*
-    this->cl1 = new FullyAssociativeCacheMemory( CacheLevel1, 32*1024, ls );
-    this->cl2 = new FullyAssociativeCacheMemory( CacheLevel2, 256*1024, ls );
-    this->cl3 = new FullyAssociativeCacheMemory( CacheLevel3, 20*1024*1024, ls );
-*/
-    this->cl1 = new SetAssociativeCacheMemory( CacheLevel1, 32*1024, 8, ls );
-    this->cl2 = new SetAssociativeCacheMemory( CacheLevel2, 256*1024, 8, ls );
-    this->cl3 = new SetAssociativeCacheMemory( CacheLevel3, 20*1024*1024, 20, ls );
+    unsigned int ls = 64;
+    unsigned int l1size = 32*1024;
+    unsigned int l2size = 256*1024;
+    unsigned int l3size = 20*1024*1024;
+    unsigned int l1way = 8;
+    unsigned int l2way = 8;
+    unsigned int l3way = 20;
+    
+    if(isFullyAssociative){
+        this->cl1 = new FullyAssociativeCacheMemory( CacheLevel1, l1size, ls );
+        this->cl2 = new FullyAssociativeCacheMemory( CacheLevel2, l2size, ls );
+        this->cl3 = new FullyAssociativeCacheMemory( CacheLevel3, l3size, ls );
+    }else{
+        this->cl1 = new SetAssociativeCacheMemory( CacheLevel1, l1size, l1way, ls );
+        this->cl2 = new SetAssociativeCacheMemory( CacheLevel2, l2size, l2way, ls );
+        this->cl3 = new SetAssociativeCacheMemory( CacheLevel3, l3size, l3way, ls );
+    }
 
     this->openFile();
     for(auto d : this->addrList){
-    //auto itr = this->addrList.begin(); 
-    //for(int i=0; i<10; i++){
-    //    auto d = *++itr;
         this->checkAddr(d);
     }
     this->printResult();
+    /*
     cl1->printMemory();
     cl2->printMemory();
     cl3->printMemory();
+    */
 }
 
 void CacheSim::checkAddr(uint64_t addr){
@@ -106,13 +116,13 @@ void CacheSim::printResult(){
     std::cout.setf(std::ios::dec, std::ios::basefield);
     std::cout << "Result" << std::endl;
     std::cout << "\t Total Access Count : " << this->access << std::endl;
-    std::cout << "\t L1 Hits : " << this->l1hits << std::endl;
-    std::cout << "\t L1 Misses : " << this->l1miss << std::endl;
+    //std::cout << "\t L1 Hits : " << this->l1hits << std::endl;
+    //std::cout << "\t L1 Misses : " << this->l1miss << std::endl;
     std::cout << "\t L1 Miss rate : " << (double)this->l1miss/this->access*100 << "%" << std::endl;
-    std::cout << "\t L2 Hits : " << this->l2hits << std::endl;
-    std::cout << "\t L2 Misses : " << this->l2miss << std::endl;
+    //std::cout << "\t L2 Hits : " << this->l2hits << std::endl;
+    //std::cout << "\t L2 Misses : " << this->l2miss << std::endl;
     std::cout << "\t L2 Miss rate : " << (double)this->l2miss/this->l1miss*100 << "%" << std::endl;
-    std::cout << "\t L3 Hits : " << this->l3hits << std::endl;
-    std::cout << "\t L3 Misses : " << this->l3miss << std::endl;
+    //std::cout << "\t L3 Hits : " << this->l3hits << std::endl;
+    //std::cout << "\t L3 Misses : " << this->l3miss << std::endl;
     std::cout << "\t L3 Miss rate : " << (double)this->l3miss/this->l2miss*100 << "%" << std::endl;
 }

@@ -6,17 +6,34 @@
 
 int main( int argc, char ** argv )
 {
-    if( argc >= 2 ){
-        std::string option = argv[1];
-        
-        if( option == "c2sim"){
-            std::string fname = argv[2];
-            CacheSim c(fname);
-            c.run();
-        }else{
-            std::cout << "Error : option error!" << std::endl;
-        }
-    }else{
-        std::cout << "Error : args error!" << std::endl;
+    std::string opt, mode, fname="", cmode="full";
+
+    // arg split
+    for(int i=1; i+1<=argc; i+=2){
+        opt = argv[i];
+
+        if( opt == "-o" ) mode = argv[i+1];
+        else if( opt == "-c" ) cmode = argv[i+1];
+        else if( opt == "-f" ) fname = argv[i+1];
     }
+    
+    // arg check
+    if( mode != "c2sim" ){
+        std::cout << "Error : not supported option" << std::endl;
+        return -1;
+    }
+    if( fname.empty() ){
+        std::cout << "Error : add -f FILENAME option" << std::endl;
+        return -1;
+    }
+    if( ( cmode != "full" ) && ( cmode != "set" ) ){
+        std::cout << "Error : add -c 'full' or 'set' " << std::endl;
+        return -1;
+    }
+
+    if( mode == "c2sim"){
+        CacheSim c(fname, cmode);
+        c.run();
+    }
+    return 0;
 }
