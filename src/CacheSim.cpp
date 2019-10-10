@@ -105,7 +105,7 @@ void CacheSim::openFile(){
         ifs.read( reinterpret_cast<char*>(std::addressof(datasize)), sizeof(uint64_t));
         ifs.read( reinterpret_cast<char*>(std::addressof(data)), sizeof(uint64_t));
         //n++;
-        //if( n++ > 100000000 ) break;
+        //if( n++ > 50000000 ) break;
         //this->addrList.push_back( addr );
         this->checkAddr(addr);
     }

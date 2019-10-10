@@ -2,6 +2,7 @@
 #include <cmath>
 #include <iomanip>
 #include <bitset>
+#include <map>
 #include "CacheMemory.hpp"
 
 #ifndef _FULLYASSOCIATIVECACHEMEMORY_H_
@@ -14,7 +15,7 @@ class FullyAssociativeCacheMemory : public CacheMemory{
         unsigned int tagsize;       // タグ(byte)
         unsigned int offset;        // オフセット
         std::list<MemoryEntry> cacheLRUList;
-        std::unordered_map<uint64_t, std::list<MemoryEntry>::iterator> cacheMap;
+        std::map<uint64_t, std::list<MemoryEntry>::iterator> cacheMap;
         int entryCount;
     public:
         FullyAssociativeCacheMemory(enum CacheLevel, unsigned int, unsigned int);
