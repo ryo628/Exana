@@ -15,6 +15,7 @@ class FullyAssociativeCacheMemory : public CacheMemory{
         unsigned int offset;        // オフセット
         std::list<MemoryEntry> cacheLRUList;
         std::unordered_map<uint64_t, std::list<MemoryEntry>::iterator> cacheMap;
+        int entryCount;
     public:
         FullyAssociativeCacheMemory(enum CacheLevel, unsigned int, unsigned int);
         ~FullyAssociativeCacheMemory();

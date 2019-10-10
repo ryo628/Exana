@@ -46,15 +46,13 @@ void CacheSim::run(){
     }
 
     this->openFile();
-    for(auto d : this->addrList){
-        this->checkAddr(d);
-    }
+
+    // result
     this->printResult();
-    /*
     cl1->printMemory();
     cl2->printMemory();
     cl3->printMemory();
-    */
+    
 }
 
 void CacheSim::checkAddr(uint64_t addr){
@@ -91,7 +89,7 @@ void CacheSim::checkAddr(uint64_t addr){
 void CacheSim::openFile(){
     std::ifstream ifs(this->fname.c_str(),std::ios::binary);
     std::string line;
-
+    long long int n=0;
     // ifstream check
     if (ifs.fail())
     {
@@ -101,13 +99,17 @@ void CacheSim::openFile(){
     // read data from file
     uint64_t rwflag, addr, datasize, data;
     while(!ifs.eof()){
-    //for(int i=0;i<10;i++){
+    // /for(int i=0;i<10;i++){
         ifs.read( reinterpret_cast<char*>(std::addressof(rwflag)), sizeof(uint64_t));
         ifs.read( reinterpret_cast<char*>(std::addressof(addr)), sizeof(uint64_t));
         ifs.read( reinterpret_cast<char*>(std::addressof(datasize)), sizeof(uint64_t));
         ifs.read( reinterpret_cast<char*>(std::addressof(data)), sizeof(uint64_t));
-        this->addrList.push_back( addr );
+        //n++;
+        //if( n++ > 100000000 ) break;
+        //this->addrList.push_back( addr );
+        this->checkAddr(addr);
     }
+    //std::cout << n << std::endl;
 
     ifs.close();
 }
