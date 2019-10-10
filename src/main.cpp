@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <chrono>
 #include "CacheSim.hpp"
 
 #define DEBUG
@@ -7,6 +8,9 @@
 int main( int argc, char ** argv )
 {
     std::string opt, mode, fname="", cmode="full";
+
+    // 時間計測
+    auto start = std::chrono::system_clock::now();
 
     // arg split
     for(int i=1; i+1<=argc; i+=2){
@@ -35,5 +39,10 @@ int main( int argc, char ** argv )
         CacheSim c(fname, cmode);
         c.run();
     }
+
+    auto end = std::chrono::system_clock::now();
+    long double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+    std::cout << elapsed << " ms" << std::endl;
+    
     return 0;
 }
