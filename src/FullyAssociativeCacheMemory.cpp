@@ -6,7 +6,7 @@ FullyAssociativeCacheMemory::FullyAssociativeCacheMemory(enum CacheLevel _cl, un
     this->setnum = this->size / this->linesize;
     this->offset = std::log2(this->linesize);
     this->tagsize = sizeof(uint64_t)*8-this->offset;
-    
+    this->entryCount = 0;
     // show status
     this->printStatus();
 }
@@ -37,7 +37,8 @@ void FullyAssociativeCacheMemory::loadMemory(uint64_t addr){
     this->cacheMap[tag] = this->cacheLRUList.begin();
     
     // Memoryから溢れてた時
-    if( this->cacheLRUList.size() > this->setnum ){
+    if( this->entryCount++ > this->setnum ){
+    //if( this->cacheLRUList.size() > this->setnum ){
         // iterator削除
         this->cacheMap.erase( this->cacheLRUList.back().getTag() );
         // LRU Listから削除
@@ -45,7 +46,7 @@ void FullyAssociativeCacheMemory::loadMemory(uint64_t addr){
     }
 }
 
-void FullyAssociativeCacheMemory::printMemory(){
+void FullyAssociativeCacheMemory::printMemory(){/*
     std::cout.setf(std::ios::dec, std::ios::basefield);
     std::cout << "CacheLevel : " << this->level << std::endl;
 
@@ -54,21 +55,22 @@ void FullyAssociativeCacheMemory::printMemory(){
     for (auto item : this->cacheLRUList ){
         std::cout << "\t" << std::bitset<sizeof(uint64_t)*8>(item.getTag()) << std::endl;
     }
-    std::cout.setf(std::ios::dec, std::ios::basefield);
+    std::cout.setf(std::ios::dec, std::ios::basefield);*/
+    std::cout << "CacheLevel : " << this->level << std::endl;
+    std::cout << "\tcount : " << this->cacheLRUList.size() << std::endl;
 }
 
 bool FullyAssociativeCacheMemory::isCacheMiss( uint64_t addr ){
     uint64_t tag = addr >> this->offset;
 
-    if( this->cacheMap.count(tag) == 1 ){
-        // hitした時
-
+    // hitした時
+    auto itr = this->cacheMap.find(tag);
+    if( itr != this->cacheMap.end() ){
         // LRU List 更新
-        auto itr = this->cacheMap[tag];
         this->cacheLRUList.splice(
             this->cacheLRUList.begin(), // to TOP
             this->cacheLRUList,
-            itr     // from now
+            itr->second     // from now
         );
 
         return false;
