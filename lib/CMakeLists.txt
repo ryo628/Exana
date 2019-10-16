@@ -5,13 +5,9 @@ project(libtest)
 # TODO: need it?
 # configure_DynamoRIO_global(OFF ON)
 
-find_package(DynamoRIO)
-if(NOT DynamoRIO_FOUND)
-  message(FATAL_ERROR"DynamoRIO package required to build")
-endif(NOT DynamoRIO_FOUND)
-
 # add src
 add_library(memtrace SHARED "memtrace_x86.c;utils.c")
+add_dependencies(memtrace api_headers)
 configure_DynamoRIO_client(memtrace)
 use_DynamoRIO_extension(memtrace "drcontainers")
 use_DynamoRIO_extension(memtrace "drmgr")
