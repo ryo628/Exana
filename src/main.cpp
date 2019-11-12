@@ -41,7 +41,7 @@ int main( int argc, char ** argv )
     }
 
     auto end = std::chrono::system_clock::now();
-    long double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+    double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
     std::cout << elapsed << " ms" << std::endl;
     
     return 0;

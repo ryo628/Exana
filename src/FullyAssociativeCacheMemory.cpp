@@ -37,12 +37,13 @@ void FullyAssociativeCacheMemory::loadMemory(uint64_t addr){
     this->cacheMap[tag] = this->cacheLRUList.begin();
     
     // Memoryから溢れてた時
-    if( this->entryCount++ > this->setnum ){
+    if( this->entryCount++ >= this->setnum ){
     //if( this->cacheLRUList.size() > this->setnum ){
         // iterator削除
         this->cacheMap.erase( this->cacheLRUList.back().getTag() );
         // LRU Listから削除
         this->cacheLRUList.pop_back();
+        this->entryCount--;
     }
 }
 
@@ -62,18 +63,20 @@ void FullyAssociativeCacheMemory::printMemory(){/*
 
 bool FullyAssociativeCacheMemory::isCacheMiss( uint64_t addr ){
     uint64_t tag = addr >> this->offset;
+    //std::cout << "tag : " << tag << std::endl;
 
-    // hitした時
     auto itr = this->cacheMap.find(tag);
-    if( itr != this->cacheMap.end() ){
+    // hitしなかった時
+    if( itr == this->cacheMap.end() ) return true;
+    // hitした時
+    else{
         // LRU List 更新
         this->cacheLRUList.splice(
             this->cacheLRUList.begin(), // to TOP
             this->cacheLRUList,
-            itr->second     // from now
+            itr->second                 // hit entry
         );
 
         return false;
     }
-    else return true;
 }
