@@ -48,10 +48,10 @@ void CacheSim::run(){
     this->openFile();
 
     // result
-    this->printResult();
+    this->printResult();/*
     cl1->printMemory();
     cl2->printMemory();
-    cl3->printMemory();
+    cl3->printMemory();*/
     
 }
 
@@ -87,7 +87,7 @@ void CacheSim::checkAddr(uint64_t addr){
 }
 
 void CacheSim::openFile(){
-    std::ifstream ifs(this->fname.c_str(),std::ios::binary);
+    std::ifstream ifs(this->fname.c_str(), std::ios::in | std::ios::binary);
     std::string line;
     long long int n=0;
     // ifstream check
@@ -97,17 +97,59 @@ void CacheSim::openFile(){
     }
 
     // read data from file
-    uint64_t rwflag, addr, datasize, data;
+    uint64_t rwflag, addr, datasize, pc;
+    uint64_t buf[4];
+    char test[8];
+    long long int r = 0, w = 0;
+    std::string tmp;
     while(!ifs.eof()){
-    // /for(int i=0;i<10;i++){
+    //while (getline(ifs, tmp)) {
+        /*
         ifs.read( reinterpret_cast<char*>(std::addressof(rwflag)), sizeof(uint64_t));
         ifs.read( reinterpret_cast<char*>(std::addressof(addr)), sizeof(uint64_t));
         ifs.read( reinterpret_cast<char*>(std::addressof(datasize)), sizeof(uint64_t));
-        ifs.read( reinterpret_cast<char*>(std::addressof(data)), sizeof(uint64_t));
-        //n++;
-        //if( n++ > 50000000 ) break;
-        //this->addrList.push_back( addr );
-        this->checkAddr(addr);
+        ifs.read( reinterpret_cast<char*>(std::addressof(pc)), sizeof(uint64_t));
+        */
+        ifs.read( reinterpret_cast<char*>(std::addressof(buf)), sizeof(buf));
+//#define DEBUG
+#ifdef DEBUG
+        std::cout << std::hex << buf[1] << std::endl;
+#endif
+        auto tmp = buf[1];
+        char* tp = (char*)&tmp;
+        char* p = (char*)&buf[1];
+        p[0] = tp[0];
+        p[1] = tp[1];
+        p[2] = tp[2];
+        p[3] = tp[3];
+        p[4] = tp[4];
+        p[5] = tp[5];
+        p[6] = tp[6];
+        p[7] = tp[7];
+#ifdef DEBUG
+        std::cout << std::hex << buf[1] << std::endl;
+        std::cout << std::endl;
+#endif
+        this->checkAddr(buf[1]);
+
+        //std::cout << std::dec << sizeof(buf) << std::endl;
+        //std::cout << std::hex << rwflag << std::endl;
+        //std::cout << std::hex << addr << std::endl;
+        //std::cout << std::hex << datasize << std::endl;
+        //std::cout << std::hex << pc << std::endl;
+        //std::cout << std::endl;
+#ifdef DEBUG
+        std::cout << std::hex << buf[0] << std::endl;
+        std::cout << std::hex << buf[1] << std::endl;
+        std::cout << std::hex << buf[2] << std::endl;
+        std::cout << std::hex << buf[3] << std::endl;
+        std::cout << std::endl;
+        if( n++ > 1 ) break;
+#endif
+        //addr = std::stoull(tmp, nullptr, 16);
+        //this->checkAddr(addr);
+
+        //std::cout << addr << std::endl;
     }
     //std::cout << n << std::endl;
 
@@ -118,13 +160,18 @@ void CacheSim::printResult(){
     std::cout.setf(std::ios::dec, std::ios::basefield);
     std::cout << "Result" << std::endl;
     std::cout << "\t Total Access Count : " << this->access << std::endl;
+    std::cout << "Total Miss Rate" << std::endl;
+    std::cout << "\t L1 " << this->l1miss << " Misses\trate : " << (double)this->l1miss/this->access*100 << "%" << std::endl;
+    std::cout << "\t L2 " << this->l2miss << " Misses\trate : " << (double)this->l2miss/this->access*100 << "%" << std::endl;
+    std::cout << "\t L3 " << this->l3miss << " Misses\trate : " << (double)this->l3miss/this->access*100 << "%" << std::endl;
+    std::cout << "Each Miss Rate" << std::endl;
+    std::cout << "\t L1 : " << (double)this->l1miss/this->access*100 << "%" << std::endl;
+    std::cout << "\t L2 : " << (double)this->l2miss/this->l1miss*100 << "%" << std::endl;
+    std::cout << "\t L3 : " << (double)this->l3miss/this->l2miss*100 << "%" << std::endl;
     //std::cout << "\t L1 Hits : " << this->l1hits << std::endl;
     //std::cout << "\t L1 Misses : " << this->l1miss << std::endl;
-    std::cout << "\t L1 Miss rate : " << (double)this->l1miss/this->access*100 << "%" << std::endl;
     //std::cout << "\t L2 Hits : " << this->l2hits << std::endl;
     //std::cout << "\t L2 Misses : " << this->l2miss << std::endl;
-    std::cout << "\t L2 Miss rate : " << (double)this->l2miss/this->l1miss*100 << "%" << std::endl;
     //std::cout << "\t L3 Hits : " << this->l3hits << std::endl;
     //std::cout << "\t L3 Misses : " << this->l3miss << std::endl;
-    std::cout << "\t L3 Miss rate : " << (double)this->l3miss/this->l2miss*100 << "%" << std::endl;
 }

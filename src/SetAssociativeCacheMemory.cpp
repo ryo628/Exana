@@ -86,20 +86,18 @@ bool SetAssociativeCacheMemory::isCacheMiss( uint64_t addr ){
     std::cout << std::bitset<64>(set) << std::endl;
     std::cout << std::bitset<64>((addr << this->tagsize) >> (this->tagsize + this->offset)) << std::endl;
 */
+//std::cout << std::hex << tag << std::endl;
+    auto itr = this->cacheMap[set].find(tag);
+    // hitしなかった時
+    if( itr == this->cacheMap[set].end() ) return true;
     // hitした時
-    if( this->cacheMap[set].count(tag) == 1 ){
-        auto itr = this->cacheMap[set][tag];
-        
+    else{
         this->cacheLRUList[set].splice(
             this->cacheLRUList[set].begin(), // to TOP
             this->cacheLRUList[set],
-            itr     // from now
+            itr->second     // from now
         );
 
         return false;
-    }
-    else{
-        //std::cout << "fuga" <<std::endl;
-        return true;
     }
 }
