@@ -5,6 +5,10 @@
 # buid dir
 build/
 
+# traxefile
+tmp/
+memtrace*
+
 ### C++ ###
 # Prerequisites
 *.d

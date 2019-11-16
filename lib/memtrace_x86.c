@@ -76,13 +76,14 @@ typedef struct _mem_ref_t {
 } mem_ref_t;
 
 /* Max number of mem_ref a buffer can have */
-#define MAX_NUM_MEM_REFS 8192
+//#define MAX_NUM_MEM_REFS 8192
+#define MAX_NUM_MEM_REFS 8192*2*2
 /* The size of memory buffer for holding mem_refs. When it fills up,
  * we dump data from the buffer to the file.
  */
 #define MEM_BUF_SIZE (sizeof(mem_ref_t) * MAX_NUM_MEM_REFS)
 
-//#define SHOW_RESULTS
+#define SHOW_RESULTS
 //#define OUTPUT_TEXT
 
 /* thread private log file and counter */
@@ -134,11 +135,6 @@ instrument_mem(void *drcontext, instrlist_t *ilist, instr_t *where, int pos, boo
 DR_EXPORT void
 dr_client_main(client_id_t id, int argc, const char *argv[])
 {
-    int i;
-    for(i=0;i<argc;i++){
-        dr_fprintf(STDERR, "%s\n", argv[i]);
-    }
-
     /* We need 2 reg slots beyond drreg's eflags slots => 3 slots */
     drreg_options_t ops = { sizeof(ops), 3, false };
     /* Specify priority relative to other instrumentation operations: */
@@ -159,6 +155,7 @@ dr_client_main(client_id_t id, int argc, const char *argv[])
         !drmgr_register_thread_exit_event(event_thread_exit) ||
         !drmgr_register_bb_app2app_event(event_bb_app2app, &priority) ||
         !drmgr_register_bb_instrumentation_event(NULL, event_bb_insert, &priority) ||
+        //!drmgr_register_bb_instru2instru_event(event_bb_insert, &priority) ||
         drreg_init(&ops) != DRREG_SUCCESS) {
         /* something is wrong: can't continue */
         DR_ASSERT(false);
@@ -201,6 +198,7 @@ event_exit()
         !drmgr_unregister_thread_init_event(event_thread_init) ||
         !drmgr_unregister_thread_exit_event(event_thread_exit) ||
         !drmgr_unregister_bb_insertion_event(event_bb_insert) ||
+        //!drmgr_unregister_bb_instru2instru_event(event_bb_insert) ||
         drreg_exit() != DRREG_SUCCESS)
         DR_ASSERT(false);
 
@@ -234,8 +232,7 @@ event_thread_init(void *drcontext)
      * the same directory as our library. We could also pass
      * in a path as a client argument.
      */
-    data->log =
-        log_file_open(client_id, drcontext, ".", "memtrace",
+    data->log = log_file_open(client_id, drcontext, ".", "memtrace",
 #ifndef WINDOWS
                       DR_FILE_CLOSE_ON_FORK |
 #endif
@@ -313,14 +310,17 @@ memtrace(void *drcontext)
     per_thread_t *data;
     int num_refs;
     mem_ref_t *mem_ref;
-#ifdef OUTPUT_TEXT
+//#ifdef OUTPUT_TEXT
     int i;
-#endif
+//#endif
 
     data = drmgr_get_tls_field(drcontext, tls_index);
     mem_ref = (mem_ref_t *)data->buf_base;
     num_refs = (int)((mem_ref_t *)data->buf_ptr - mem_ref);
-
+    /*for (i = 0; i < num_refs; i++) {
+        printf("%llx\n",(ptr_uint_t)mem_ref->addr);
+        ++mem_ref;
+    }*/
 #ifdef OUTPUT_TEXT
     /* We use libc's fprintf as it is buffered and much faster than dr_fprintf
      * for repeated printing that dominates performance, as the printing does here.
@@ -334,6 +334,20 @@ memtrace(void *drcontext)
     }
 #else
     dr_write_file(data->log, data->buf_base, (size_t)(data->buf_ptr - data->buf_base));
+     data->log = log_file_open(client_id, drcontext, "./tmp/", "memtrace",
+#ifndef WINDOWS
+                      DR_FILE_CLOSE_ON_FORK |
+#endif
+                          DR_FILE_ALLOW_LARGE);
+#ifdef SHOW_RESULTS/*
+    char msg[512];
+    int len;
+    len = dr_snprintf(msg, sizeof(msg) / sizeof(msg[0]),
+                      "%llx",(ptr_uint_t)mem_ref->addr);
+    DR_ASSERT(len > 0);
+    NULL_TERMINATE_BUFFER(msg);
+    DISPLAY_STRING(msg);*/
+#endif /* SHOW_RESULTS */
 #endif
 
     memset(data->buf_base, 0, MEM_BUF_SIZE);
