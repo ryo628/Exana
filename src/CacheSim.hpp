@@ -12,7 +12,7 @@
 
 class CacheSim{
     private:
-        const std::string fname;
+        std::string fname;
         CacheMemory *cl1, *cl2, *cl3;
         long long int access, l1miss, l2miss, l3miss, l1hits, l2hits, l3hits;
         std::list<uint64_t> addrList;
@@ -22,7 +22,7 @@ class CacheSim{
         CacheSim(std::string, std::string);
         ~CacheSim();
         void run();
-        void openFile();
+        bool openFile();
         void checkAddr(uint64_t);
         void printResult();
 };
