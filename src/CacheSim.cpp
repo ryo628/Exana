@@ -58,6 +58,8 @@ void CacheSim::run(){
 }
 
 void CacheSim::checkAddr(uint64_t addr){
+    //std::cout << std::bitset<64>((uint64_t)addr) << std::endl;
+    //std::cout << this->cl1 << std::endl;
     this->access++;
     if( this->cl1->isCacheMiss(addr) ){
         this->l1miss++;

@@ -14,7 +14,7 @@ class CacheSim{
     private:
         std::string fname;
         CacheMemory *cl1, *cl2, *cl3;
-        long long int access, l1miss, l2miss, l3miss, l1hits, l2hits, l3hits;
+        unsigned long long int access, l1miss, l2miss, l3miss, l1hits, l2hits, l3hits;
         std::list<uint64_t> addrList;
         bool isFullyAssociative;
     public:
