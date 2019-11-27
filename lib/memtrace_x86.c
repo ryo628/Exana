@@ -64,6 +64,7 @@
 #include "drreg.h"
 #include "drutil.h"
 #include "utils.h"
+#include "dr_ir_opnd.h"
 
 /* Each mem_ref_t includes the type of reference (read or write),
  * the address referenced, and the size of the reference.
@@ -84,6 +85,7 @@ typedef struct _mem_ref_t {
 
 #define SHOW_RESULTS
 //#define OUTPUT_TEXT
+#define AARCHXX
 
 /* thread private log file and counter */
 typedef struct {
