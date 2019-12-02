@@ -6,7 +6,8 @@ project(libtest)
 # configure_DynamoRIO_global(OFF ON)
 
 # add src
-add_library(memtrace SHARED "memtrace_x86.c;")
+# add_library(memtrace SHARED "memtrace_x86.c;")
+add_library(memtrace SHARED "memtrace_simple.c;")
 add_dependencies(memtrace api_headers)
 configure_DynamoRIO_client(memtrace)
 use_DynamoRIO_extension(memtrace "drcontainers")
