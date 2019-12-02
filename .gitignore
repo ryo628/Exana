@@ -6,6 +6,7 @@
 build/
 
 # traxefile
+tmp/
 memtrace*
 
 ### C++ ###
