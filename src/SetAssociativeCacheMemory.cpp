@@ -20,7 +20,7 @@ SetAssociativeCacheMemory::SetAssociativeCacheMemory(enum CacheLevel cl_, unsign
     }*/
 
     // show status
-    //this->printStatus();
+    this->printStatus();
 }
 
 SetAssociativeCacheMemory::~SetAssociativeCacheMemory(){
@@ -82,11 +82,9 @@ bool SetAssociativeCacheMemory::isCacheMiss( uint64_t addr ){
     uint64_t set = (addr << this->tagsize) >> (this->tagsize + this->offset);
 /*
     std::cout << std::bitset<64>(addr) << std::endl;
-    std::cout << std::bitset<64>(addr << this->tagsize) << std::endl;
+    std::cout << std::bitset<64>(tag) << std::endl;
     std::cout << std::bitset<64>(set) << std::endl;
-    std::cout << std::bitset<64>((addr << this->tagsize) >> (this->tagsize + this->offset)) << std::endl;
 */
-//std::cout << std::hex << tag << std::endl;
     auto itr = this->cacheMap[set].find(tag);
     // hitしなかった時
     if( itr == this->cacheMap[set].end() ) return true;
