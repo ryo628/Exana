@@ -26,6 +26,7 @@ CacheSim::CacheSim(std::string fn, std::string cmode) : fname(fn){
     unsigned int l2way = 8;
     unsigned int l3way = 8;
 
+
     isFullyAssociative = (cmode=="full") ? true:false;
     
     if(isFullyAssociative){
