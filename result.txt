@@ -1,0 +1,15 @@
+nohup: ignoring input
+rm: cannot remove './tmp/*': No such file or directory
+Result
+	 Total Access Count : 4765821486
+Total Miss Rate
+	 L1 892466314 Misses	rate : 18.7264%
+	 L2 100216758 Misses	rate : 2.10282%
+	 L3 100216758 Misses	rate : 2.10282%
+Each Miss Rate
+	 L1 : 18.7264%
+	 L2 : 11.2292%
+	 L3 : 100%
+
+	 L3 : 100%
+execute time 8579.980 s
