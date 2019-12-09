@@ -11,7 +11,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
 
 # add src
 add_library(wrapper SHARED "wrapper.cpp")
-add_library(memtrace SHARED "memtrace_x86.c;utils.c;wrapper.cpp")
+add_library(memtrace SHARED "memtrace_x86.c;utils.c")
 target_link_libraries(wrapper cachesim)
 target_link_libraries(memtrace wrapper)
 
@@ -22,3 +22,4 @@ use_DynamoRIO_extension(memtrace "drmgr")
 use_DynamoRIO_extension(memtrace "drreg")
 use_DynamoRIO_extension(memtrace "drutil")
 use_DynamoRIO_extension(memtrace "drx")
+use_DynamoRIO_extension(memtrace "dr_ir_opnd")

@@ -64,6 +64,7 @@
 #include "drreg.h"
 #include "drutil.h"
 #include "utils.h"
+#include "dr_ir_opnd.h"
 
 //#include "../src/CacheSim.hpp"
 #include "wrapper.h"
@@ -88,6 +89,7 @@ typedef struct _mem_ref_t {
 
 #define SHOW_RESULTS
 //#define OUTPUT_TEXT
+#define AARCHXX
 
 /* thread private log file and counter */
 typedef struct {
