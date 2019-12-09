@@ -152,8 +152,10 @@ memtrace(void *drcontext)
 
     // c2sim
     for (i = 0; i < num_refs; i++) {
-        unsigned long long int addr = (ptr_uint_t)mem_ref->addr;
-        CacheSimcheckAddr(c2sim, addr);
+        if( !(mem_ref->type > REF_TYPE_WRITE) ){
+            unsigned long long int addr = (ptr_uint_t)mem_ref->addr;
+            CacheSimcheckAddr(c2sim, addr);
+        }
         ++mem_ref;
     }
 
@@ -406,6 +408,8 @@ event_thread_exit(void *drcontext)
     //log_stream_close(data->logf); /* closes fd too */
     dr_raw_mem_free(data->buf_base, MEM_BUF_SIZE);
     dr_thread_free(drcontext, data, sizeof(per_thread_t));
+    
+    //dr_fprintf(STDERR, "ref : %d\n", num_refs);
 }
 
 static void
