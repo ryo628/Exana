@@ -19,12 +19,13 @@ CacheSim::CacheSim(std::string fn, std::string cmode) : fname(fn){
     l3hits = 0;
 
     unsigned int ls = 64;
-    unsigned int l1size = 32*1024;
-    unsigned int l2size = 256*1024;
-    unsigned int l3size = 4*1024*1024;
-    unsigned int l1way = 4;
-    unsigned int l2way = 8;
-    unsigned int l3way = 8;
+    unsigned int l1size = 512*1024;
+    unsigned int l2size = 16*1024*1024;
+    unsigned int l3size = 22*1024*1024;
+    unsigned int l1way = 8;
+    unsigned int l2way = 16;
+    unsigned int l3way = 11;
+
 
 
     isFullyAssociative = (cmode=="full") ? true:false;
