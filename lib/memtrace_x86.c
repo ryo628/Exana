@@ -64,6 +64,10 @@
 #include "drreg.h"
 #include "drutil.h"
 #include "utils.h"
+#include "dr_ir_opnd.h"
+
+//#include "../src/CacheSim.hpp"
+#include "wrapper.h"
 
 /* Each mem_ref_t includes the type of reference (read or write),
  * the address referenced, and the size of the reference.
@@ -85,6 +89,7 @@ typedef struct _mem_ref_t {
 
 #define SHOW_RESULTS
 //#define OUTPUT_TEXT
+#define AARCHXX
 
 /* thread private log file and counter */
 typedef struct {
@@ -106,6 +111,9 @@ static app_pc code_cache;
 static void *mutex;     /* for multithread support */
 static uint64 num_refs; /* keep a global memory reference count */
 static int tls_index;
+
+// c2sim
+cache_sim_t c2sim;
 
 static void
 event_exit(void);
@@ -155,7 +163,6 @@ dr_client_main(client_id_t id, int argc, const char *argv[])
         !drmgr_register_thread_exit_event(event_thread_exit) ||
         !drmgr_register_bb_app2app_event(event_bb_app2app, &priority) ||
         !drmgr_register_bb_instrumentation_event(NULL, event_bb_insert, &priority) ||
-        //!drmgr_register_bb_instru2instru_event(event_bb_insert, &priority) ||
         drreg_init(&ops) != DRREG_SUCCESS) {
         /* something is wrong: can't continue */
         DR_ASSERT(false);
@@ -163,6 +170,9 @@ dr_client_main(client_id_t id, int argc, const char *argv[])
     }
     tls_index = drmgr_register_tls_field();
     DR_ASSERT(tls_index != -1);
+
+    // c2sim
+    c2sim = CacheSimInit();
 
     code_cache_init();
     /* make it easy to tell, by looking at log file, which client executed */
@@ -198,13 +208,15 @@ event_exit()
         !drmgr_unregister_thread_init_event(event_thread_init) ||
         !drmgr_unregister_thread_exit_event(event_thread_exit) ||
         !drmgr_unregister_bb_insertion_event(event_bb_insert) ||
-        //!drmgr_unregister_bb_instru2instru_event(event_bb_insert) ||
         drreg_exit() != DRREG_SUCCESS)
         DR_ASSERT(false);
 
     dr_mutex_destroy(mutex);
     drutil_exit();
     drmgr_exit();
+
+    // c2sim
+    CacheSimShowResult(c2sim);
 }
 
 #ifdef WINDOWS
@@ -219,9 +231,9 @@ event_thread_init(void *drcontext)
     per_thread_t *data;
 
     /* allocate thread private data */
-    data = dr_thread_alloc(drcontext, sizeof(per_thread_t));
+    data = (per_thread_t *)dr_thread_alloc(drcontext, sizeof(per_thread_t));
     drmgr_set_tls_field(drcontext, tls_index, data);
-    data->buf_base = dr_thread_alloc(drcontext, MEM_BUF_SIZE);
+    data->buf_base = (char *)dr_thread_alloc(drcontext, MEM_BUF_SIZE);
     data->buf_ptr = data->buf_base;
     /* set buf_end to be negative of address of buffer end for the lea later */
     data->buf_end = -(ptr_int_t)(data->buf_base + MEM_BUF_SIZE);
@@ -231,12 +243,12 @@ event_thread_init(void *drcontext)
      * On Windows we need an absolute path so we place it in
      * the same directory as our library. We could also pass
      * in a path as a client argument.
-     */
-    data->log = log_file_open(client_id, drcontext, ".", "memtrace",
+     *//*
+    data->log = log_file_open(client_id, drcontext, "./tmp/", "memtrace",
 #ifndef WINDOWS
                       DR_FILE_CLOSE_ON_FORK |
 #endif
-                          DR_FILE_ALLOW_LARGE);
+                          DR_FILE_ALLOW_LARGE);*/
 #ifdef OUTPUT_TEXT
     data->logf = log_stream_from_file(data->log);
     fprintf(data->logf,
@@ -250,7 +262,7 @@ event_thread_exit(void *drcontext)
     per_thread_t *data;
 
     memtrace(drcontext);
-    data = drmgr_get_tls_field(drcontext, tls_index);
+    data = (per_thread_t *)drmgr_get_tls_field(drcontext, tls_index);
     dr_mutex_lock(mutex);
     num_refs += data->num_refs;
     dr_mutex_unlock(mutex);
@@ -314,13 +326,9 @@ memtrace(void *drcontext)
     int i;
 //#endif
 
-    data = drmgr_get_tls_field(drcontext, tls_index);
+    data = (per_thread_t *)drmgr_get_tls_field(drcontext, tls_index);
     mem_ref = (mem_ref_t *)data->buf_base;
     num_refs = (int)((mem_ref_t *)data->buf_ptr - mem_ref);
-    /*for (i = 0; i < num_refs; i++) {
-        printf("%llx\n",(ptr_uint_t)mem_ref->addr);
-        ++mem_ref;
-    }*/
 #ifdef OUTPUT_TEXT
     /* We use libc's fprintf as it is buffered and much faster than dr_fprintf
      * for repeated printing that dominates performance, as the printing does here.
@@ -332,13 +340,13 @@ memtrace(void *drcontext)
                 (ptr_uint_t)mem_ref->addr);
         ++mem_ref;
     }
-#else
+#else/*
     dr_write_file(data->log, data->buf_base, (size_t)(data->buf_ptr - data->buf_base));
-     data->log = log_file_open(client_id, drcontext, "./tmp/", "memtrace",
+    data->log = log_file_open(client_id, drcontext, "./tmp/", "memtrace",
 #ifndef WINDOWS
                       DR_FILE_CLOSE_ON_FORK |
 #endif
-                          DR_FILE_ALLOW_LARGE);
+                          DR_FILE_ALLOW_LARGE);*/
 #ifdef SHOW_RESULTS/*
     char msg[512];
     int len;
@@ -350,6 +358,15 @@ memtrace(void *drcontext)
 #endif /* SHOW_RESULTS */
 #endif
 
+    // c2sim
+    for (i = 0; i < num_refs; i++) {
+        unsigned long long int addr = (ptr_uint_t)mem_ref->addr;
+        CacheSimcheckAddr(c2sim, addr);
+        ++mem_ref;
+    }
+
+    mem_ref = (mem_ref_t *)data->buf_base;
+    num_refs = (int)((mem_ref_t *)data->buf_ptr - mem_ref);
     memset(data->buf_base, 0, MEM_BUF_SIZE);
     data->num_refs += num_refs;
     data->buf_ptr = data->buf_base;
@@ -373,7 +390,7 @@ code_cache_init(void)
 
     drcontext = dr_get_current_drcontext();
     code_cache =
-        dr_nonheap_alloc(page_size, DR_MEMPROT_READ | DR_MEMPROT_WRITE | DR_MEMPROT_EXEC);
+        (app_pc)dr_nonheap_alloc(page_size, DR_MEMPROT_READ | DR_MEMPROT_WRITE | DR_MEMPROT_EXEC);
     ilist = instrlist_create(drcontext);
     /* The lean procedure simply performs a clean call, and then jumps back
      * to the DR code cache.
@@ -411,7 +428,7 @@ instrument_mem(void *drcontext, instrlist_t *ilist, instr_t *where, int pos, boo
     per_thread_t *data;
     app_pc pc;
 
-    data = drmgr_get_tls_field(drcontext, tls_index);
+    data = (per_thread_t *)drmgr_get_tls_field(drcontext, tls_index);
 
     /* Steal two scratch registers.
      * reg2 must be ECX or RCX for jecxz.

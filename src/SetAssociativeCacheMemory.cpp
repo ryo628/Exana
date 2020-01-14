@@ -20,7 +20,7 @@ SetAssociativeCacheMemory::SetAssociativeCacheMemory(enum CacheLevel cl_, unsign
     }*/
 
     // show status
-    this->printStatus();
+    //this->printStatus();
 }
 
 SetAssociativeCacheMemory::~SetAssociativeCacheMemory(){
